@@ -168,6 +168,7 @@ export function createCvcWidget(plugin: HyperswitchPlugin): CvcWidget {
         () => cvcWidgetPlugin.show(),
         () => cvcWidgetPlugin.hide(),
       );
+      plugin.elementMount({ selector });
     },
     unmount(): void {
       stopObserving();

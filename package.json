@@ -1,6 +1,6 @@
 {
   "name": "@juspay-tech/capacitor-hyperswitch",
-  "version": "0.0.1",
+  "version": "1.0.0-alpha.1",
   "description": "Hyperswitch SDK bindings for Capacitor Applications",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",

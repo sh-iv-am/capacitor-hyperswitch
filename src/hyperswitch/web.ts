@@ -2,6 +2,9 @@ import { WebPlugin } from '@capacitor/core';
 
 import type { HyperConfig, HyperswitchPlugin, JSONValue, PaymentResult, UpdateIntentResult } from './definitions';
 
+const IFRAME_SRC = 'https://beta.hyperswitch.io/mobile/1.10.0/index.html';
+const TARGET_ORIGIN = 'https://beta.hyperswitch.io';
+
 let defaultProps = {
   from: 'capacitor',
   type: 'payment',
@@ -14,6 +17,11 @@ let defaultProps = {
   },
 };
 
+// Pending element iframes keyed by type, waiting for elementMount
+const pendingElements: Map<string, { iframeType: string }> = new Map();
+// Active mounted iframes keyed by selector
+const mountedIframes: Map<string, HTMLIFrameElement> = new Map();
+
 export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
   async init(config: HyperConfig): Promise<void> {
     console.log('INIT', config);
@@ -22,11 +30,60 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
 
   async elements(options: { elementsOptions: JSONValue }): Promise<{ handlerId: string }> {
     console.log('ELEMENTS', options);
+    const sdkAuth = options?.elementsOptions?.['sdkAuthorization'] as string | undefined;
+    if (sdkAuth) defaultProps.sdkAuthorization = sdkAuth;
     return { handlerId: 'web-stub' };
   }
 
   async createElement(options: { type: string; createOptions: JSONValue }): Promise<void> {
     console.log('CREATE_ELEMENT', options);
+    const iframeType = options.type === 'cvcWidget' || options.type === 'cvc' ? 'cvcWidget' : 'widgetPaymentSheet';
+    pendingElements.set(options.type, { iframeType });
+  }
+
+  async elementMount(options: { selector: string }): Promise<void> {
+    console.log('ELEMENT_MOUNT', options);
+
+    // Find the most recently created element type
+    const entry = pendingElements.size > 0 ? [...pendingElements.entries()].pop() : null;
+    if (!entry) return;
+    const [elementType, { iframeType }] = entry;
+    pendingElements.delete(elementType);
+
+    const container = document.querySelector(options.selector) as HTMLElement | null;
+    if (!container) {
+      console.warn(`[Hyperswitch] elementMount: selector "${options.selector}" not found`);
+      return;
+    }
+
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'width:100%;height:100%;border:none;';
+    container.innerHTML = '';
+    container.appendChild(iframe);
+    mountedIframes.set(options.selector, iframe);
+
+    const props = { ...defaultProps, type: iframeType };
+
+    const sendMessage = () => {
+      if (!iframe.contentWindow) return;
+      iframe.contentWindow.postMessage(JSON.stringify({ initialProps: { props } }), TARGET_ORIGIN);
+    };
+
+    window.addEventListener('message', (event: MessageEvent) => {
+      if (event.origin !== TARGET_ORIGIN) return;
+      try {
+        const data = JSON.parse(event.data);
+        if (data.sdkLoaded) sendMessage();
+        if (data.type && data.payload !== undefined) {
+          // Forward widget events to JS listeners
+          this.notifyListeners('paymentEvent', { type: data.type, payload: data.payload ?? {} });
+        }
+      } catch (_) {
+        /* ignore */
+      }
+    });
+
+    iframe.src = IFRAME_SRC;
   }
 
   async updateIntent(options: { sdkAuthorization: string }): Promise<UpdateIntentResult> {
@@ -165,10 +222,6 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
   }
   async elementUnmount(): Promise<void> {
     console.log('ELEMENT_UNMOUNT');
-  }
-
-  async elementMount(options: { selector: string }): Promise<void> {
-    console.log('ELEMENT_MOUNT', options);
   }
 
   async elementFocus(): Promise<void> {
