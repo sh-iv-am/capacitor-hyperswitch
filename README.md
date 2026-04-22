@@ -31,10 +31,11 @@ npx cap sync
 * [`createElement(...)`](#createelement)
 * [`updateIntent(...)`](#updateintent)
 * [`getCustomerSavedPaymentMethods()`](#getcustomersavedpaymentmethods)
-* [`getCustomerDefaultSavedPaymentMethodData()`](#getcustomerdefaultsavedpaymentmethoddata)
-* [`getCustomerLastUsedPaymentMethodData()`](#getcustomerlastusedpaymentmethoddata)
-* [`confirmWithCustomerDefaultPaymentMethod()`](#confirmwithcustomerdefaultpaymentmethod)
-* [`confirmWithCustomerLastUsedPaymentMethod()`](#confirmwithcustomerlastusedpaymentmethod)
+* [`getCustomerSavedPaymentMethodData(...)`](#getcustomersavedpaymentmethoddata)
+* [`getCustomerDefaultSavedPaymentMethodData(...)`](#getcustomerdefaultsavedpaymentmethoddata)
+* [`getCustomerLastUsedPaymentMethodData(...)`](#getcustomerlastusedpaymentmethoddata)
+* [`confirmWithCustomerDefaultPaymentMethod(...)`](#confirmwithcustomerdefaultpaymentmethod)
+* [`confirmWithCustomerLastUsedPaymentMethod(...)`](#confirmwithcustomerlastusedpaymentmethod)
 * [`confirmPayment(...)`](#confirmpayment)
 * [`initPaymentSession(...)`](#initpaymentsession)
 * [`presentPaymentSheet(...)`](#presentpaymentsheet)
@@ -47,6 +48,7 @@ npx cap sync
 * [`elementMount(...)`](#elementmount)
 * [`elementFocus()`](#elementfocus)
 * [`elementClear()`](#elementclear)
+* [`addListener('paymentEvent', ...)`](#addlistenerpaymentevent-)
 * [Interfaces](#interfaces)
 * [Type Aliases](#type-aliases)
 
@@ -71,12 +73,14 @@ init(config: HyperConfig) => Promise<void>
 ### elements(...)
 
 ```typescript
-elements(options: { elementsOptions: JSONValue; }) => Promise<void>
+elements(options: { elementsOptions: JSONValue; }) => Promise<{ handlerId: string; }>
 ```
 
 | Param         | Type                                                                  |
 | ------------- | --------------------------------------------------------------------- |
 | **`options`** | <code>{ elementsOptions: <a href="#jsonvalue">JSONValue</a>; }</code> |
+
+**Returns:** <code>Promise&lt;{ handlerId: string; }&gt;</code>
 
 --------------------
 
@@ -97,14 +101,14 @@ createElement(options: { type: string; createOptions: JSONValue; }) => Promise<v
 ### updateIntent(...)
 
 ```typescript
-updateIntent(options: { sdkAuthorization: string; }) => Promise<JSONValue>
+updateIntent(options: { sdkAuthorization: string; }) => Promise<UpdateIntentResult>
 ```
 
 | Param         | Type                                       |
 | ------------- | ------------------------------------------ |
 | **`options`** | <code>{ sdkAuthorization: string; }</code> |
 
-**Returns:** <code>Promise&lt;<a href="#jsonvalue">JSONValue</a>&gt;</code>
+**Returns:** <code>Promise&lt;<a href="#updateintentresult">UpdateIntentResult</a>&gt;</code>
 
 --------------------
 
@@ -112,52 +116,83 @@ updateIntent(options: { sdkAuthorization: string; }) => Promise<JSONValue>
 ### getCustomerSavedPaymentMethods()
 
 ```typescript
-getCustomerSavedPaymentMethods() => Promise<JSONValue>
+getCustomerSavedPaymentMethods() => Promise<{ handlerId: string; }>
 ```
+
+**Returns:** <code>Promise&lt;{ handlerId: string; }&gt;</code>
+
+--------------------
+
+
+### getCustomerSavedPaymentMethodData(...)
+
+```typescript
+getCustomerSavedPaymentMethodData(options: { handlerId: string; }) => Promise<JSONValue>
+```
+
+| Param         | Type                                |
+| ------------- | ----------------------------------- |
+| **`options`** | <code>{ handlerId: string; }</code> |
 
 **Returns:** <code>Promise&lt;<a href="#jsonvalue">JSONValue</a>&gt;</code>
 
 --------------------
 
 
-### getCustomerDefaultSavedPaymentMethodData()
+### getCustomerDefaultSavedPaymentMethodData(...)
 
 ```typescript
-getCustomerDefaultSavedPaymentMethodData() => Promise<JSONValue>
+getCustomerDefaultSavedPaymentMethodData(options: { handlerId: string; }) => Promise<JSONValue>
 ```
+
+| Param         | Type                                |
+| ------------- | ----------------------------------- |
+| **`options`** | <code>{ handlerId: string; }</code> |
 
 **Returns:** <code>Promise&lt;<a href="#jsonvalue">JSONValue</a>&gt;</code>
 
 --------------------
 
 
-### getCustomerLastUsedPaymentMethodData()
+### getCustomerLastUsedPaymentMethodData(...)
 
 ```typescript
-getCustomerLastUsedPaymentMethodData() => Promise<JSONValue>
+getCustomerLastUsedPaymentMethodData(options: { handlerId: string; }) => Promise<JSONValue>
 ```
+
+| Param         | Type                                |
+| ------------- | ----------------------------------- |
+| **`options`** | <code>{ handlerId: string; }</code> |
 
 **Returns:** <code>Promise&lt;<a href="#jsonvalue">JSONValue</a>&gt;</code>
 
 --------------------
 
 
-### confirmWithCustomerDefaultPaymentMethod()
+### confirmWithCustomerDefaultPaymentMethod(...)
 
 ```typescript
-confirmWithCustomerDefaultPaymentMethod() => Promise<PaymentResult>
+confirmWithCustomerDefaultPaymentMethod(options: { handlerId: string; }) => Promise<PaymentResult>
 ```
+
+| Param         | Type                                |
+| ------------- | ----------------------------------- |
+| **`options`** | <code>{ handlerId: string; }</code> |
 
 **Returns:** <code>Promise&lt;<a href="#paymentresult">PaymentResult</a>&gt;</code>
 
 --------------------
 
 
-### confirmWithCustomerLastUsedPaymentMethod()
+### confirmWithCustomerLastUsedPaymentMethod(...)
 
 ```typescript
-confirmWithCustomerLastUsedPaymentMethod() => Promise<PaymentResult>
+confirmWithCustomerLastUsedPaymentMethod(options: { handlerId: string; }) => Promise<PaymentResult>
 ```
+
+| Param         | Type                                |
+| ------------- | ----------------------------------- |
+| **`options`** | <code>{ handlerId: string; }</code> |
 
 **Returns:** <code>Promise&lt;<a href="#paymentresult">PaymentResult</a>&gt;</code>
 
@@ -210,14 +245,12 @@ presentPaymentSheet(options: { sheetOptions: JSONValue; }) => Promise<PaymentRes
 ### elementOn(...)
 
 ```typescript
-elementOn(options: { event: string; }) => Promise<JSONValue | void>
+elementOn(options: { event: string; }) => Promise<void>
 ```
 
 | Param         | Type                            |
 | ------------- | ------------------------------- |
 | **`options`** | <code>{ event: string; }</code> |
-
-**Returns:** <code>Promise&lt;void | <a href="#jsonvalue">JSONValue</a>&gt;</code>
 
 --------------------
 
@@ -302,6 +335,28 @@ elementClear() => Promise<void>
 --------------------
 
 
+### addListener('paymentEvent', ...)
+
+```typescript
+addListener(event: 'paymentEvent', handler: (data: PaymentEventData) => void) => Promise<{ remove: () => Promise<void>; }>
+```
+
+Subscribe to native widget events emitted by PaymentElement or CvcWidget.
+The handler receives a <a href="#paymenteventdata">PaymentEventData</a> object with `type` and `payload`.
+
+Use `element.on(eventType, handler)` in the JS wrapper layer instead of
+calling this directly.
+
+| Param         | Type                                                                             |
+| ------------- | -------------------------------------------------------------------------------- |
+| **`event`**   | <code>'paymentEvent'</code>                                                      |
+| **`handler`** | <code>(data: <a href="#paymenteventdata">PaymentEventData</a>) =&gt; void</code> |
+
+**Returns:** <code>Promise&lt;{ remove: () =&gt; Promise&lt;void&gt;; }&gt;</code>
+
+--------------------
+
+
 ### Interfaces
 
 
@@ -327,12 +382,39 @@ elementClear() => Promise<void>
 | **`customAirborneEndpoint`**  | <code>string</code> |
 
 
+#### UpdateIntentResult
+
+| Prop                 | Type                | Description                                     |
+| -------------------- | ------------------- | ----------------------------------------------- |
+| **`type`**           | <code>string</code> | "success" \| "totalFailure" \| "partialFailure" |
+| **`message`**        | <code>string</code> |                                                 |
+| **`failedCount`**    | <code>number</code> |                                                 |
+| **`succeededCount`** | <code>number</code> |                                                 |
+
+
 #### PaymentResult
 
 | Prop          | Type                                               |
 | ------------- | -------------------------------------------------- |
 | **`type`**    | <code>'completed' \| 'canceled' \| 'failed'</code> |
 | **`message`** | <code>string</code>                                |
+
+
+#### PaymentEventData
+
+Native event emitted by PaymentElement or CvcWidget.
+
+`type` values:
+  PaymentElement: "FORM_STATUS" | "PAYMENT_METHOD_STATUS" |
+                  "PAYMENT_METHOD_INFO_CARD" | "PAYMENT_METHOD_INFO_BILLING_ADDRESS"
+  CvcWidget:      "CVC_STATUS"
+
+`payload` is the raw key/value data from the SDK (values serialised to strings on Android).
+
+| Prop          | Type                                                            |
+| ------------- | --------------------------------------------------------------- |
+| **`type`**    | <code>string</code>                                             |
+| **`payload`** | <code><a href="#record">Record</a>&lt;string, string&gt;</code> |
 
 
 ### Type Aliases

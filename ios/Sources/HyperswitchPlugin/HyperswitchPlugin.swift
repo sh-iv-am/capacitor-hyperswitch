@@ -13,6 +13,7 @@ public class HyperswitchPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "initPaymentSession",                      returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "presentPaymentSheet",                     returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getCustomerSavedPaymentMethods",          returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getCustomerSavedPaymentMethodData",       returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getCustomerDefaultSavedPaymentMethodData",returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getCustomerLastUsedPaymentMethodData",    returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "confirmWithCustomerDefaultPaymentMethod", returnType: CAPPluginReturnPromise),
@@ -66,7 +67,7 @@ public class HyperswitchPlugin: CAPPlugin, CAPBridgedPlugin {
 
         impl.elements(
             sdkAuthorization: sdkAuthorization,
-            onReady: { call.resolve() },
+            onReady: { handlerId in call.resolve(["handlerId": handlerId]) },
             onError: { msg in call.reject(msg) }
         )
     }
@@ -117,28 +118,52 @@ public class HyperswitchPlugin: CAPPlugin, CAPBridgedPlugin {
     // ── Saved payment methods ──────────────────────────────────────────────────
 
     @objc func getCustomerSavedPaymentMethods(_ call: CAPPluginCall) {
-        call.resolve(impl.getCustomerSavedPaymentMethods())
+        impl.getCustomerSavedPaymentMethods(
+            onReady: { handlerId in call.resolve(["handlerId": handlerId]) },
+            onError: { msg in call.reject(msg) }
+        )
+    }
+
+    @objc func getCustomerSavedPaymentMethodData(_ call: CAPPluginCall) {
+        guard let handlerId = call.getString("handlerId"), !handlerId.isEmpty else {
+            call.reject("handlerId is required"); return
+        }
+        call.resolve(impl.getCustomerSavedPaymentMethodData(handlerId: handlerId))
     }
 
     @objc func getCustomerDefaultSavedPaymentMethodData(_ call: CAPPluginCall) {
-        call.resolve(impl.getCustomerDefaultSavedPaymentMethodData())
+        guard let handlerId = call.getString("handlerId"), !handlerId.isEmpty else {
+            call.reject("handlerId is required"); return
+        }
+        call.resolve(impl.getCustomerDefaultSavedPaymentMethodData(handlerId: handlerId))
     }
 
     @objc func getCustomerLastUsedPaymentMethodData(_ call: CAPPluginCall) {
-        call.resolve(impl.getCustomerLastUsedPaymentMethodData())
+        guard let handlerId = call.getString("handlerId"), !handlerId.isEmpty else {
+            call.reject("handlerId is required"); return
+        }
+        call.resolve(impl.getCustomerLastUsedPaymentMethodData(handlerId: handlerId))
     }
 
     // ── Confirm with saved methods ─────────────────────────────────────────────
 
     @objc func confirmWithCustomerDefaultPaymentMethod(_ call: CAPPluginCall) {
+        guard let handlerId = call.getString("handlerId"), !handlerId.isEmpty else {
+            call.reject("handlerId is required"); return
+        }
         impl.confirmWithCustomerDefaultPaymentMethod(
+            handlerId: handlerId,
             onResult: { result in call.resolve(result) },
             onError:  { msg in call.reject(msg) }
         )
     }
 
     @objc func confirmWithCustomerLastUsedPaymentMethod(_ call: CAPPluginCall) {
+        guard let handlerId = call.getString("handlerId"), !handlerId.isEmpty else {
+            call.reject("handlerId is required"); return
+        }
         impl.confirmWithCustomerLastUsedPaymentMethod(
+            handlerId: handlerId,
             onResult: { result in call.resolve(result) },
             onError:  { msg in call.reject(msg) }
         )

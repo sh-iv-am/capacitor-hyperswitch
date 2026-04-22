@@ -12,6 +12,7 @@ let fetchedData = null;       // { publishableKey, sdkAuthorization, paymentId }
 
 // Flow 1
 let flow1Session = null;      // InitPaymentSession
+let flow1Handler = null;      // PaymentSessionHandler (from getCustomerSavedPaymentMethods)
 let cvcWidget = null;
 
 // Flow 2
@@ -55,6 +56,7 @@ window.initPaymentSession = async () => {
   try {
     const session = Hyperswitch.init({ publishableKey: fetchedData.publishableKey });
     flow1Session = await session.initPaymentSession({ sdkAuthorization: fetchedData.sdkAuthorization });
+    flow1Handler = null; // reset handler when re-initializing
     out('initSessionOutput', 'initPaymentSession ready.');
   } catch (err) {
     out('initSessionOutput', 'Error: ' + err.message);
@@ -80,8 +82,8 @@ window.getCustomerSavedPaymentMethods = async () => {
   if (!flow1Session) { out('savedMethodsOutput', 'Call initPaymentSession first.'); return; }
   out('savedMethodsOutput', 'Fetching saved methods…');
   try {
-    const data = await flow1Session.getCustomerSavedPaymentMethods();
-    out('savedMethodsOutput', JSON.stringify(data, null, 2));
+    flow1Handler = await flow1Session.getCustomerSavedPaymentMethods();
+    out('savedMethodsOutput', 'Handler ready (id: ' + flow1Handler.handlerId + ')');
   } catch (err) {
     out('savedMethodsOutput', 'Error: ' + err.message);
   }
@@ -90,7 +92,7 @@ window.getCustomerSavedPaymentMethods = async () => {
 window.mountCvcWidget = () => {
   if (!flow1Session) { out('savedMethodsOutput', 'Call initPaymentSession first.'); return; }
   if (!elementsSession) { out('savedMethodsOutput', 'CvcWidget requires Elements session — call elements() first (Flow 2).'); return; }
-  cvcWidget = elementsSession.createCvcWidget();
+  cvcWidget = elementsSession.create({ type: 'cvcWidget' });
   cvcWidget.mount('#cvc-widget');
 };
 
@@ -100,9 +102,9 @@ window.unmountCvcWidget = () => {
 };
 
 window.getLastUsedMethod = async () => {
-  if (!flow1Session) { out('savedDataOutput', 'Call initPaymentSession first.'); return; }
+  if (!flow1Handler) { out('savedDataOutput', 'Call getCustomerSavedPaymentMethods first.'); return; }
   try {
-    const data = await flow1Session.getCustomerLastUsedPaymentMethodData();
+    const data = await flow1Handler.getCustomerLastUsedPaymentMethodData();
     out('savedDataOutput', 'Last used:\n' + JSON.stringify(data, null, 2));
   } catch (err) {
     out('savedDataOutput', 'Error: ' + err.message);
@@ -110,9 +112,9 @@ window.getLastUsedMethod = async () => {
 };
 
 window.getDefaultMethod = async () => {
-  if (!flow1Session) { out('savedDataOutput', 'Call initPaymentSession first.'); return; }
+  if (!flow1Handler) { out('savedDataOutput', 'Call getCustomerSavedPaymentMethods first.'); return; }
   try {
-    const data = await flow1Session.getCustomerDefaultSavedPaymentMethodData();
+    const data = await flow1Handler.getCustomerDefaultSavedPaymentMethodData();
     out('savedDataOutput', 'Default:\n' + JSON.stringify(data, null, 2));
   } catch (err) {
     out('savedDataOutput', 'Error: ' + err.message);
@@ -120,10 +122,10 @@ window.getDefaultMethod = async () => {
 };
 
 window.confirmWithLastUsed = async () => {
-  if (!flow1Session) { out('confirmSavedOutput', 'Call initPaymentSession first.'); return; }
+  if (!flow1Handler) { out('confirmSavedOutput', 'Call getCustomerSavedPaymentMethods first.'); return; }
   out('confirmSavedOutput', 'Confirming with last used…');
   try {
-    const result = await flow1Session.confirmWithCustomerLastUsedPaymentMethod();
+    const result = await flow1Handler.confirmWithCustomerLastUsedPaymentMethod();
     out('confirmSavedOutput', resultText(result));
   } catch (err) {
     out('confirmSavedOutput', 'Error: ' + err.message);
@@ -131,10 +133,10 @@ window.confirmWithLastUsed = async () => {
 };
 
 window.confirmWithDefault = async () => {
-  if (!flow1Session) { out('confirmSavedOutput', 'Call initPaymentSession first.'); return; }
+  if (!flow1Handler) { out('confirmSavedOutput', 'Call getCustomerSavedPaymentMethods first.'); return; }
   out('confirmSavedOutput', 'Confirming with default…');
   try {
-    const result = await flow1Session.confirmWithCustomerDefaultPaymentMethod();
+    const result = await flow1Handler.confirmWithCustomerDefaultPaymentMethod();
     out('confirmSavedOutput', resultText(result));
   } catch (err) {
     out('confirmSavedOutput', 'Error: ' + err.message);

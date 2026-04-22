@@ -1,6 +1,17 @@
-import type { Elements, HyperswitchPlugin, JSONValue, PaymentElement, PaymentResult, CvcWidget } from './definitions';
+import type {
+  Elements,
+  HyperswitchPlugin,
+  JSONValue,
+  PaymentElement,
+  PaymentEventData,
+  PaymentResult,
+  UpdateIntentResult,
+  CvcWidget,
+  PaymentSessionHandler,
+} from './definitions';
 import { paymentElementPlugin } from './views/payment-element/index';
 import { cvcWidgetPlugin } from './views/cvc-widget/index';
+import { createPaymentSessionHandler } from './payment-session-handler';
 
 function getContentPosition(el: HTMLElement): { x: number; y: number; width: number; height: number } {
   const rect = el.getBoundingClientRect();
@@ -32,8 +43,6 @@ function observeVisibility(el: HTMLElement, onVisible: () => void, onHidden: () 
 }
 
 export function createPaymentElement(plugin: HyperswitchPlugin): PaymentElement {
-  const listeners = new Map<string, ((data?: JSONValue) => void) | undefined>();
-
   let mountedElement: HTMLElement | null = null;
   let resizeObserver: ResizeObserver | null = null;
   let mutationObserver: MutationObserver | null = null;
@@ -68,11 +77,14 @@ export function createPaymentElement(plugin: HyperswitchPlugin): PaymentElement 
   }
 
   return {
-    on(event: string, handler?: (data?: JSONValue) => void): void {
-      listeners.set(event, handler);
-      plugin.elementOn({ event }).then((data) => {
-        const cb = listeners.get(event);
-        if (cb) cb(data as JSONValue | undefined);
+    on(event: string, handler?: (data?: PaymentEventData) => void): void {
+      if (!handler) return;
+      // Subscribe persistently via Capacitor's addListener.
+      // Native side fires "paymentEvent" for all widget events; we filter by type here.
+      plugin.addListener('paymentEvent', (eventData: PaymentEventData) => {
+        if (eventData.type === event) {
+          handler(eventData);
+        }
       });
     },
     collapse(): void {
@@ -171,34 +183,26 @@ export function createCvcWidget(plugin: HyperswitchPlugin): CvcWidget {
 }
 
 export function createElements(plugin: HyperswitchPlugin): Elements {
-  return {
-    create(_options: { type: 'paymentElement' }): PaymentElement {
-      return createPaymentElement(plugin);
-    },
-
-    createCvcWidget(): CvcWidget {
+  function create(options: { type: 'paymentElement' }): PaymentElement;
+  function create(options: { type: 'cvcWidget' }): CvcWidget;
+  function create(options: { type: 'paymentElement' | 'cvcWidget' }): PaymentElement | CvcWidget {
+    if (options.type === 'cvcWidget') {
       return createCvcWidget(plugin);
-    },
+    }
+    return createPaymentElement(plugin);
+  }
 
-    async updateIntent(intentResolver: () => Promise<string>): Promise<JSONValue> {
+  return {
+    create,
+
+    async updateIntent(intentResolver: () => Promise<string>): Promise<UpdateIntentResult> {
       const sdkAuthorization = await intentResolver();
       return plugin.updateIntent({ sdkAuthorization });
     },
 
-    async getCustomerDefaultSavedPaymentMethodData(): Promise<JSONValue> {
-      return plugin.getCustomerDefaultSavedPaymentMethodData();
-    },
-
-    async getCustomerLastUsedPaymentMethodData(): Promise<JSONValue> {
-      return plugin.getCustomerLastUsedPaymentMethodData();
-    },
-
-    async confirmWithCustomerDefaultPaymentMethod(): Promise<PaymentResult> {
-      return plugin.confirmWithCustomerDefaultPaymentMethod();
-    },
-
-    async confirmWithCustomerLastUsedPaymentMethod(): Promise<PaymentResult> {
-      return plugin.confirmWithCustomerLastUsedPaymentMethod();
+    async getCustomerSavedPaymentMethods(): Promise<PaymentSessionHandler> {
+      const { handlerId } = await plugin.getCustomerSavedPaymentMethods();
+      return createPaymentSessionHandler(plugin, handlerId);
     },
   };
 }

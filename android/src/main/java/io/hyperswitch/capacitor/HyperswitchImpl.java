@@ -7,8 +7,13 @@ import com.getcapacitor.Logger;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
+import io.hyperswitch.CvcWidgetEvents;
+import io.hyperswitch.PaymentEventSubscriptionBuilder;
+import io.hyperswitch.PaymentEvents;
 import io.hyperswitch.model.CustomEndpointConfiguration;
+import io.hyperswitch.model.ElementsUpdateResult;
 import io.hyperswitch.model.HyperswitchConfiguration;
 import io.hyperswitch.model.HyperswitchEnvironment;
 import io.hyperswitch.model.PaymentSessionConfiguration;
@@ -18,11 +23,13 @@ import io.hyperswitch.paymentsheet.PaymentSheet;
 import io.hyperswitch.sdk.Elements;
 import io.hyperswitch.sdk.Hyperswitch;
 import io.hyperswitch.view.CVCWidget;
+import io.hyperswitch.view.HyperswitchElement;
 import io.hyperswitch.view.PaymentElement;
 import io.hyperswitch.sdk.HyperswitchBoundElement;
 import io.hyperswitch.sdk.HyperswitchInstance;
 import io.hyperswitch.sdk.PaymentSession;
 import kotlin.Result;
+import kotlin.Unit;
 import kotlin.coroutines.Continuation;
 import kotlin.coroutines.CoroutineContext;
 import kotlin.coroutines.EmptyCoroutineContext;
@@ -48,7 +55,7 @@ public class HyperswitchImpl {
 
     // Elements API state
     private Elements elements;
-    private PaymentSessionHandler paymentSessionHandler;
+    private final Map<String, PaymentSessionHandler> handlerRegistry = new HashMap<>();
     private HyperswitchBoundElement paymentElementBound;
     private HyperswitchBoundElement cvcWidgetBound;
 
@@ -58,6 +65,14 @@ public class HyperswitchImpl {
 
     // Legacy PaymentSession (used by presentPaymentSheet)
     private PaymentSession paymentSession;
+
+    // Event forwarding (set by HyperswitchPlugin via setEventListener)
+    private NativeEventListener eventListener;
+
+    /** Called by HyperswitchPlugin.load() to receive widget events for notifyListeners. */
+    public void setEventListener(NativeEventListener listener) {
+        this.eventListener = listener;
+    }
 
     // ── Callbacks ──────────────────────────────────────────────────────────────────────────────
 
@@ -72,13 +87,23 @@ public class HyperswitchImpl {
     }
 
     public interface ElementsCallback {
-        void onReady();
+        void onReady(String handlerId);
         void onError(String message);
     }
 
     public interface InitPaymentSessionCallback {
         void onReady();
         void onError(String message);
+    }
+
+    public interface CustomerSavedPaymentMethodsCallback {
+        void onReady(String handlerId);
+        void onError(String message);
+    }
+
+    /** Called when a payment widget emits a native event (e.g. CVC_STATUS, FORM_STATUS). */
+    public interface NativeEventListener {
+        void onEvent(String type, Map<String, Object> payload);
     }
 
     // ── Init ───────────────────────────────────────────────────────────────────────────────────
@@ -156,9 +181,10 @@ public class HyperswitchImpl {
 
             // Fetch saved payment methods immediately so they are ready
             elementsInstance.getCustomerSavedPaymentMethods(handler -> {
-                this.paymentSessionHandler = handler;
-                Logger.info("Hyperswitch", "Elements ready, PaymentSessionHandler loaded");
-                if (callback != null) callback.onReady();
+                String handlerId = UUID.randomUUID().toString();
+                handlerRegistry.put(handlerId, handler);
+                Logger.info("Hyperswitch", "Elements ready, PaymentSessionHandler stored with id: " + handlerId);
+                if (callback != null) callback.onReady(handlerId);
                 return null;
             });
 
@@ -168,8 +194,9 @@ public class HyperswitchImpl {
 
     /**
      * Binds a native view to the Elements session.
-     * Mirrors: paymentElementBound = elements.bind(paymentElement, buildConfiguration())
-     *          cvcWidgetBound      = elements.bind(cvcWidget)
+     * Mirrors:
+     *   paymentElementBound = elements.bind(paymentElement, buildConfiguration()) { on(...) { } }
+     *   cvcWidgetBound      = elements.bind(cvcWidget) { on(CvcWidgetEvents.CvcStatus) { } }
      */
     public void createElement(String type, JSObject createOptions) {
         Logger.info("Hyperswitch", "createElement called with type: " + type);
@@ -185,18 +212,59 @@ public class HyperswitchImpl {
                     Logger.error("Hyperswitch", new Throwable("PaymentElementView not registered yet"));
                     return;
                 }
-                paymentElementBound = elements.bind(paymentElementView, new PaymentSheet.Configuration("abc"), null);
-                Logger.info("Hyperswitch", "PaymentElement bound successfully");
+                paymentElementBound = elements.bind(
+                        paymentElementView,
+                        new PaymentSheet.Configuration("abc"),
+                        builder -> {
+                            // Subscribe to PaymentElement events
+                            builder.on(PaymentEvents.FormStatus.INSTANCE, event -> {
+                                fireEvent("FORM_STATUS", event.getPayload());
+                                return Unit.INSTANCE;
+                            });
+                            builder.on(PaymentEvents.PaymentMethodStatus.INSTANCE, event -> {
+                                fireEvent("PAYMENT_METHOD_STATUS", event.getPayload());
+                                return Unit.INSTANCE;
+                            });
+                            builder.on(PaymentEvents.PaymentMethodInfoCard.INSTANCE, event -> {
+                                fireEvent("PAYMENT_METHOD_INFO_CARD", event.getPayload());
+                                return Unit.INSTANCE;
+                            });
+                            builder.on(PaymentEvents.PaymentMethodInfoBillingAddress.INSTANCE, event -> {
+                                fireEvent("PAYMENT_METHOD_INFO_BILLING_ADDRESS", event.getPayload());
+                                return Unit.INSTANCE;
+                            });
+                            return Unit.INSTANCE;
+                        }
+                );
+                Logger.info("Hyperswitch", "PaymentElement bound with event subscriptions");
 
             } else if ("cvcWidget".equalsIgnoreCase(type) || "cvc".equalsIgnoreCase(type)) {
                 if (cvcWidgetView == null) {
                     Logger.error("Hyperswitch", new Throwable("CvcWidgetView not registered yet"));
                     return;
                 }
-                cvcWidgetBound = elements.bind(cvcWidgetView, null, null);
-                Logger.info("Hyperswitch", "CVCWidget bound successfully");
+                // Mirrors: elements.bind(cvcWidget) { on(CvcWidgetEvents.CvcStatus) { println(it) } }
+                cvcWidgetBound = elements.bind(
+                        cvcWidgetView,
+                        new HashMap<>(),
+                        builder -> {
+                            builder.on(CvcWidgetEvents.CvcStatus.INSTANCE, event -> {
+                                fireEvent("CVC_STATUS", event.getPayload());
+                                return Unit.INSTANCE;
+                            });
+                            return Unit.INSTANCE;
+                        }
+                );
+                Logger.info("Hyperswitch", "CVCWidget bound with CvcStatus subscription");
             }
         });
+    }
+
+    /** Forwards a native widget event to JS via the registered NativeEventListener. */
+    private void fireEvent(String type, Map<String, Object> payload) {
+        if (eventListener != null) {
+            eventListener.onEvent(type, payload != null ? payload : new HashMap<>());
+        }
     }
 
     // ── UpdateIntent ──────────────────────────────────────────────────────────────────────────
@@ -218,17 +286,36 @@ public class HyperswitchImpl {
 
         PaymentSessionConfiguration newConfig = new PaymentSessionConfiguration(sdkAuthorization);
 
-        // Callback overload: updateIntent(suspendSupplier, resultHandler)
+        // Callback overload: updateIntent(completion, onResult)
+        // The completion lambda is called by the SDK to fetch the new config — we return it
+        // synchronously since the JS side already resolved the new sdkAuthorization before
+        // calling this plugin method.
         elements.updateIntent(
                 continuation -> {
-                    // This acts as the suspend supplier — just return the new config
+                    // Synchronous completion: resume the continuation with the new config.
+                    // Kotlin coroutine runtime will see a non-COROUTINE_SUSPENDED return
+                    // and treat this as an already-complete suspend function.
                     return newConfig;
                 },
                 result -> {
                     Logger.info("Hyperswitch", "updateIntent result: " + result);
                     if (callback != null) {
                         JSObject js = new JSObject();
-                        js.put("type", result.getClass().getSimpleName());
+                        switch (result) {
+                            case ElementsUpdateResult.Success success ->
+                                    js.put("type", "completed");
+                            case ElementsUpdateResult.TotalFailure totalFailure -> {
+                                Throwable cause = totalFailure.getCause();
+                                js.put("type", "failure");
+                                js.put("message", cause.getMessage());
+                            }
+                            case ElementsUpdateResult.PartialFailure partial -> {
+                                js.put("type", "failure");
+                                js.put("failedCount", partial.getFailed().size());
+                                js.put("succeededCount", partial.getSucceeded().size());
+                            }
+                            case null, default -> js.put("type", "failure");
+                        }
                         callback.onResult(js);
                     }
                     return null;
@@ -278,7 +365,7 @@ public class HyperswitchImpl {
 //        configurationMap.put("type", "payment");
 //        configurationMap.put("configuration", configuration);
 
-        paymentSession.launchPaymentSheet(new PaymentSheet.Configuration("abc"), paymentResult -> {
+        paymentSession.presentPaymentSheet(new PaymentSheet.Configuration("abc"), null, paymentResult -> {
             try {
                 JSObject jsResult = new JSObject();
                 switch (paymentResult) {
@@ -338,45 +425,56 @@ public class HyperswitchImpl {
 
     // ── CustomerSavedPaymentMethods ───────────────────────────────────────────────────────────
 
-    public JSObject getCustomerSavedPaymentMethods() {
+    /**
+     * Flow 1 (InitPaymentSession): asynchronously fetches the PaymentSessionHandler
+     * from the active paymentSession, stores it in the registry, and returns its ID.
+     */
+    public void getCustomerSavedPaymentMethods(CustomerSavedPaymentMethodsCallback callback) {
         Logger.info("Hyperswitch", "getCustomerSavedPaymentMethods called");
 
-        if (paymentSessionHandler == null) {
-            Logger.warn("Hyperswitch", "paymentSessionHandler not ready");
-            return new JSObject();
+        if (paymentSession == null) {
+            if (callback != null) callback.onError("paymentSession not ready — call initPaymentSession() first");
+            return;
         }
 
+        paymentSession.getCustomerSavedPaymentMethods(handler -> {
+            String handlerId = UUID.randomUUID().toString();
+            handlerRegistry.put(handlerId, handler);
+            Logger.info("Hyperswitch", "getCustomerSavedPaymentMethods ready, id: " + handlerId);
+            if (callback != null) callback.onReady(handlerId);
+            return null;
+        });
+    }
+
+    public JSObject getCustomerSavedPaymentMethodData(String handlerId) {
+        Logger.info("Hyperswitch", "getCustomerSavedPaymentMethodData called, id=" + handlerId);
+        PaymentSessionHandler handler = handlerRegistry.get(handlerId);
+        if (handler == null) {
+            Logger.warn("Hyperswitch", "No handler for id: " + handlerId);
+            return new JSObject();
+        }
         JSObject result = new JSObject();
         try {
-            Method method = paymentSessionHandler.getClass()
-                    .getMethod("getCustomerSavedPaymentMethodData-d1pmJ48");
-            Object data = method.invoke(paymentSessionHandler);
+            Method method = handler.getClass().getMethod("getCustomerSavedPaymentMethodData-d1pmJ48");
+            Object data = method.invoke(handler);
             if (data != null) result.put("data", data.toString());
         } catch (Exception e) {
-            Logger.error("Hyperswitch", "getCustomerSavedPaymentMethods failed", e);
+            Logger.error("Hyperswitch", "getCustomerSavedPaymentMethodData failed", e);
         }
         return result;
     }
 
-    /**
-     * Returns the default saved payment method data.
-     * Mirrors: paymentSessionHandler.getCustomerDefaultSavedPaymentMethodData()
-     */
-    public JSObject getCustomerDefaultSavedPaymentMethodData() {
-        Logger.info("Hyperswitch", "getCustomerDefaultSavedPaymentMethodData called");
-
-        if (paymentSessionHandler == null) {
-            Logger.warn("Hyperswitch", "paymentSessionHandler not ready");
+    public JSObject getCustomerDefaultSavedPaymentMethodData(String handlerId) {
+        Logger.info("Hyperswitch", "getCustomerDefaultSavedPaymentMethodData called, id=" + handlerId);
+        PaymentSessionHandler handler = handlerRegistry.get(handlerId);
+        if (handler == null) {
+            Logger.warn("Hyperswitch", "No handler for id: " + handlerId);
             return new JSObject();
         }
-
-        // The method name is mangled by Kotlin (inline value class return type).
-        // Must be invoked via reflection.
         JSObject result = new JSObject();
         try {
-            Method method = paymentSessionHandler.getClass()
-                    .getMethod("getCustomerDefaultSavedPaymentMethodData-d1pmJ48");
-            Object data = method.invoke(paymentSessionHandler);
+            Method method = handler.getClass().getMethod("getCustomerDefaultSavedPaymentMethodData-d1pmJ48");
+            Object data = method.invoke(handler);
             if (data != null) result.put("data", data.toString());
         } catch (Exception e) {
             Logger.error("Hyperswitch", "getCustomerDefaultSavedPaymentMethodData failed", e);
@@ -384,24 +482,17 @@ public class HyperswitchImpl {
         return result;
     }
 
-    /**
-     * Returns the last-used saved payment method data.
-     * The method name is mangled by Kotlin (inline value class return type) so it must
-     * be called via reflection as `getCustomerLastUsedPaymentMethodData-d1pmJ48`.
-     */
-    public JSObject getCustomerLastUsedPaymentMethodData() {
-        Logger.info("Hyperswitch", "getCustomerLastUsedPaymentMethodData called");
-
-        if (paymentSessionHandler == null) {
-            Logger.warn("Hyperswitch", "paymentSessionHandler not ready");
+    public JSObject getCustomerLastUsedPaymentMethodData(String handlerId) {
+        Logger.info("Hyperswitch", "getCustomerLastUsedPaymentMethodData called, id=" + handlerId);
+        PaymentSessionHandler handler = handlerRegistry.get(handlerId);
+        if (handler == null) {
+            Logger.warn("Hyperswitch", "No handler for id: " + handlerId);
             return new JSObject();
         }
-
         JSObject result = new JSObject();
         try {
-            Method method = paymentSessionHandler.getClass()
-                    .getMethod("getCustomerLastUsedPaymentMethodData-d1pmJ48");
-            Object data = method.invoke(paymentSessionHandler);
+            Method method = handler.getClass().getMethod("getCustomerLastUsedPaymentMethodData-d1pmJ48");
+            Object data = method.invoke(handler);
             if (data != null) result.put("data", data.toString());
         } catch (Exception e) {
             Logger.error("Hyperswitch", "getCustomerLastUsedPaymentMethodData failed", e);
@@ -409,43 +500,27 @@ public class HyperswitchImpl {
         return result;
     }
 
-    /**
-     * Confirm with the customer's default saved payment method (with optional CVC).
-     * Must run on the main thread — the SDK touches views internally.
-     */
-    public void confirmWithCustomerDefaultPaymentMethod(PaymentResultCallback callback) {
-        Logger.info("Hyperswitch", "confirmWithCustomerDefaultPaymentMethod called");
-
-        if (paymentSessionHandler == null) {
-            if (callback != null) callback.onError("paymentSessionHandler not ready");
+    public void confirmWithCustomerDefaultPaymentMethod(String handlerId, PaymentResultCallback callback) {
+        Logger.info("Hyperswitch", "confirmWithCustomerDefaultPaymentMethod called, id=" + handlerId);
+        PaymentSessionHandler handler = handlerRegistry.get(handlerId);
+        if (handler == null) {
+            if (callback != null) callback.onError("No handler for id: " + handlerId);
             return;
         }
-
         activity.runOnUiThread(() ->
-            paymentSessionHandler.confirmWithCustomerDefaultPaymentMethod(
-                    cvcWidgetView,
-                    resumeWithPaymentResult(callback)
-            )
+            handler.confirmWithCustomerDefaultPaymentMethod(cvcWidgetView, resumeWithPaymentResult(callback))
         );
     }
 
-    /**
-     * Confirm with the customer's last-used payment method (with optional CVC).
-     * Must run on the main thread — the SDK touches views internally.
-     */
-    public void confirmWithCustomerLastUsedPaymentMethod(PaymentResultCallback callback) {
-        Logger.info("Hyperswitch", "confirmWithCustomerLastUsedPaymentMethod called");
-
-        if (paymentSessionHandler == null) {
-            if (callback != null) callback.onError("paymentSessionHandler not ready");
+    public void confirmWithCustomerLastUsedPaymentMethod(String handlerId, PaymentResultCallback callback) {
+        Logger.info("Hyperswitch", "confirmWithCustomerLastUsedPaymentMethod called, id=" + handlerId);
+        PaymentSessionHandler handler = handlerRegistry.get(handlerId);
+        if (handler == null) {
+            if (callback != null) callback.onError("No handler for id: " + handlerId);
             return;
         }
-
         activity.runOnUiThread(() ->
-            paymentSessionHandler.confirmWithCustomerLastUsedPaymentMethod(
-                    cvcWidgetView,
-                    resumeWithPaymentResult(callback)
-            )
+            handler.confirmWithCustomerLastUsedPaymentMethod(cvcWidgetView, resumeWithPaymentResult(callback))
         );
     }
 

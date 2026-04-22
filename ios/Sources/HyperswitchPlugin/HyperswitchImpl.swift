@@ -17,7 +17,8 @@ public class HyperswitchImpl {
 
     // Elements API state
     private var elements: Elements?
-    private var paymentSessionHandler: PaymentSessionHandler?
+    /// Registry: handlerId → PaymentSessionHandler (supports multiple concurrent sessions)
+    private var handlerRegistry: [String: PaymentSessionHandler] = [:]
     private var paymentElementBound: HyperswitchBoundElement?
     private var cvcWidgetBound: HyperswitchBoundElement?
 
@@ -33,6 +34,7 @@ public class HyperswitchImpl {
     public typealias PaymentResultCallback = ([String: Any]) -> Void
     public typealias ErrorCallback = (String) -> Void
     public typealias VoidCallback = () -> Void
+    public typealias HandlerReadyCallback = (String) -> Void
 
     // ── View Registration ──────────────────────────────────────────────────────
 
@@ -86,10 +88,10 @@ public class HyperswitchImpl {
     // ── Elements ───────────────────────────────────────────────────────────────
 
     /// Creates an Elements session and pre-fetches the PaymentSessionHandler.
-    /// Mirrors: elements = hyperswitchInstance.elements(sessionConfig)
+    /// Calls onReady with a handlerId that the JS side holds onto.
     func elements(
         sdkAuthorization: String,
-        onReady: @escaping VoidCallback,
+        onReady: @escaping HandlerReadyCallback,
         onError: @escaping ErrorCallback
     ) {
         guard let instance = hyperswitchInstance else {
@@ -104,9 +106,10 @@ public class HyperswitchImpl {
             self.elements = elementsInstance
 
             elementsInstance.getCustomerSavedPaymentMethods { handler in
-                self.paymentSessionHandler = handler
-                print("[Hyperswitch] Elements ready, PaymentSessionHandler loaded")
-                onReady()
+                let handlerId = UUID().uuidString
+                self.handlerRegistry[handlerId] = handler
+                print("[Hyperswitch] Elements ready, PaymentSessionHandler stored with id: \(handlerId)")
+                onReady(handlerId)
             }
         }
     }
@@ -114,7 +117,6 @@ public class HyperswitchImpl {
     // ── createElement ──────────────────────────────────────────────────────────
 
     /// Binds a native view to the Elements session.
-    /// Mirrors: paymentElementBound = elements.bind(paymentElement, buildConfiguration(), nil)
     func createElement(type: String, createOptions: [String: Any]?) {
         guard let elements = elements else {
             print("[Hyperswitch] elements() must be called before createElement()")
@@ -225,43 +227,66 @@ public class HyperswitchImpl {
         }
     }
 
-    // ── Saved payment methods ──────────────────────────────────────────────────
+    // ── Flow 1: getCustomerSavedPaymentMethods (async) ─────────────────────────
 
-    func getCustomerSavedPaymentMethods() -> [String: Any] {
-        guard let handler = paymentSessionHandler else {
-            print("[Hyperswitch] paymentSessionHandler not ready")
+    /// Fetches the PaymentSessionHandler from the active paymentSession,
+    /// stores it in the registry, and returns the new handlerId.
+    func getCustomerSavedPaymentMethods(
+        onReady: @escaping HandlerReadyCallback,
+        onError: @escaping ErrorCallback
+    ) {
+        guard let session = paymentSession else {
+            onError("paymentSession not ready — call initPaymentSession() first")
+            return
+        }
+
+        session.getCustomerSavedPaymentMethods { [weak self] handler in
+            guard let self = self else { return }
+            let handlerId = UUID().uuidString
+            self.handlerRegistry[handlerId] = handler
+            print("[Hyperswitch] getCustomerSavedPaymentMethods ready, id: \(handlerId)")
+            onReady(handlerId)
+        }
+    }
+
+    // ── Handler-scoped data accessors ──────────────────────────────────────────
+
+    func getCustomerSavedPaymentMethodData(handlerId: String) -> [String: Any] {
+        guard let handler = handlerRegistry[handlerId] else {
+            print("[Hyperswitch] No handler for id: \(handlerId)")
             return [:]
         }
         let data = handler.getCustomerSavedPaymentMethodData()
         return data != nil ? ["data": String(describing: data!)] : [:]
     }
 
-    func getCustomerDefaultSavedPaymentMethodData() -> [String: Any] {
-        guard let handler = paymentSessionHandler else {
-            print("[Hyperswitch] paymentSessionHandler not ready")
+    func getCustomerDefaultSavedPaymentMethodData(handlerId: String) -> [String: Any] {
+        guard let handler = handlerRegistry[handlerId] else {
+            print("[Hyperswitch] No handler for id: \(handlerId)")
             return [:]
         }
         let data = handler.getCustomerDefaultSavedPaymentMethodData()
         return data != nil ? ["data": String(describing: data!)] : [:]
     }
 
-    func getCustomerLastUsedPaymentMethodData() -> [String: Any] {
-        guard let handler = paymentSessionHandler else {
-            print("[Hyperswitch] paymentSessionHandler not ready")
+    func getCustomerLastUsedPaymentMethodData(handlerId: String) -> [String: Any] {
+        guard let handler = handlerRegistry[handlerId] else {
+            print("[Hyperswitch] No handler for id: \(handlerId)")
             return [:]
         }
         let data = handler.getCustomerLastUsedPaymentMethodData()
         return data != nil ? ["data": String(describing: data!)] : [:]
     }
 
-    // ── Confirm with saved methods ─────────────────────────────────────────────
+    // ── Handler-scoped confirm methods ─────────────────────────────────────────
 
     func confirmWithCustomerDefaultPaymentMethod(
+        handlerId: String,
         onResult: @escaping PaymentResultCallback,
         onError: @escaping ErrorCallback
     ) {
-        guard let handler = paymentSessionHandler else {
-            onError("paymentSessionHandler not ready")
+        guard let handler = handlerRegistry[handlerId] else {
+            onError("No handler for id: \(handlerId)")
             return
         }
 
@@ -274,11 +299,12 @@ public class HyperswitchImpl {
     }
 
     func confirmWithCustomerLastUsedPaymentMethod(
+        handlerId: String,
         onResult: @escaping PaymentResultCallback,
         onError: @escaping ErrorCallback
     ) {
-        guard let handler = paymentSessionHandler else {
-            onError("paymentSessionHandler not ready")
+        guard let handler = handlerRegistry[handlerId] else {
+            onError("No handler for id: \(handlerId)")
             return
         }
 

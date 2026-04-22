@@ -6,10 +6,34 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.util.Map;
+
 @CapacitorPlugin(name = "Hyperswitch")
 public class HyperswitchPlugin extends Plugin {
 
     private final HyperswitchImpl implementation = HyperswitchImpl.getInstance();
+
+    /**
+     * Called once after the plugin is registered with Capacitor.
+     * Registers a NativeEventListener so that widget events (FORM_STATUS, CVC_STATUS, etc.)
+     * are forwarded to the JS layer via notifyListeners("paymentEvent", ...).
+     */
+    @Override
+    public void load() {
+        implementation.setEventListener((type, payload) -> {
+            JSObject data = new JSObject();
+            data.put("type", type);
+            JSObject payloadJs = new JSObject();
+            for (Map.Entry<String, Object> entry : payload.entrySet()) {
+                Object value = entry.getValue();
+                if (value != null) {
+                    payloadJs.put(entry.getKey(), value.toString());
+                }
+            }
+            data.put("payload", payloadJs);
+            notifyListeners("paymentEvent", data);
+        });
+    }
 
     @PluginMethod
     public void init(PluginCall call) {
@@ -34,9 +58,11 @@ public class HyperswitchPlugin extends Plugin {
         JSObject elementsOptions = call.getObject("elementsOptions");
         implementation.elements(elementsOptions, new HyperswitchImpl.ElementsCallback() {
             @Override
-            public void onReady() {
+            public void onReady(String handlerId) {
+                JSObject result = new JSObject();
+                result.put("handlerId", handlerId);
                 call.setKeepAlive(false);
-                call.resolve();
+                call.resolve(result);
             }
 
             @Override
@@ -95,20 +121,43 @@ public class HyperswitchPlugin extends Plugin {
 
     @PluginMethod
     public void getCustomerSavedPaymentMethods(PluginCall call) {
-        JSObject result = implementation.getCustomerSavedPaymentMethods();
-        call.resolve(result);
+        call.setKeepAlive(true);
+        implementation.getCustomerSavedPaymentMethods(new HyperswitchImpl.CustomerSavedPaymentMethodsCallback() {
+            @Override
+            public void onReady(String handlerId) {
+                JSObject result = new JSObject();
+                result.put("handlerId", handlerId);
+                call.setKeepAlive(false);
+                call.resolve(result);
+            }
+
+            @Override
+            public void onError(String message) {
+                call.setKeepAlive(false);
+                call.reject(message);
+            }
+        });
+    }
+
+    @PluginMethod
+    public void getCustomerSavedPaymentMethodData(PluginCall call) {
+        String handlerId = call.getString("handlerId");
+        if (handlerId == null || handlerId.isEmpty()) { call.reject("handlerId is required"); return; }
+        call.resolve(implementation.getCustomerSavedPaymentMethodData(handlerId));
     }
 
     @PluginMethod
     public void getCustomerDefaultSavedPaymentMethodData(PluginCall call) {
-        JSObject result = implementation.getCustomerDefaultSavedPaymentMethodData();
-        call.resolve(result);
+        String handlerId = call.getString("handlerId");
+        if (handlerId == null || handlerId.isEmpty()) { call.reject("handlerId is required"); return; }
+        call.resolve(implementation.getCustomerDefaultSavedPaymentMethodData(handlerId));
     }
 
     @PluginMethod
     public void getCustomerLastUsedPaymentMethodData(PluginCall call) {
-        JSObject result = implementation.getCustomerLastUsedPaymentMethodData();
-        call.resolve(result);
+        String handlerId = call.getString("handlerId");
+        if (handlerId == null || handlerId.isEmpty()) { call.reject("handlerId is required"); return; }
+        call.resolve(implementation.getCustomerLastUsedPaymentMethodData(handlerId));
     }
 
     @PluginMethod
@@ -151,8 +200,10 @@ public class HyperswitchPlugin extends Plugin {
 
     @PluginMethod
     public void confirmWithCustomerDefaultPaymentMethod(PluginCall call) {
+        String handlerId = call.getString("handlerId");
+        if (handlerId == null || handlerId.isEmpty()) { call.reject("handlerId is required"); return; }
         call.setKeepAlive(true);
-        implementation.confirmWithCustomerDefaultPaymentMethod(new HyperswitchImpl.PaymentResultCallback() {
+        implementation.confirmWithCustomerDefaultPaymentMethod(handlerId, new HyperswitchImpl.PaymentResultCallback() {
             @Override
             public void onResult(JSObject result) {
                 call.setKeepAlive(false);
@@ -169,8 +220,10 @@ public class HyperswitchPlugin extends Plugin {
 
     @PluginMethod
     public void confirmWithCustomerLastUsedPaymentMethod(PluginCall call) {
+        String handlerId = call.getString("handlerId");
+        if (handlerId == null || handlerId.isEmpty()) { call.reject("handlerId is required"); return; }
         call.setKeepAlive(true);
-        implementation.confirmWithCustomerLastUsedPaymentMethod(new HyperswitchImpl.PaymentResultCallback() {
+        implementation.confirmWithCustomerLastUsedPaymentMethod(handlerId, new HyperswitchImpl.PaymentResultCallback() {
             @Override
             public void onResult(JSObject result) {
                 call.setKeepAlive(false);
@@ -195,7 +248,9 @@ public class HyperswitchPlugin extends Plugin {
 
     @PluginMethod
     public void elementOn(PluginCall call) {
-        // Event listeners are not yet bridged; resolve immediately so callers don't hang.
+        // Event subscriptions are registered natively when the element is bound (createElement).
+        // Events are pushed to JS via notifyListeners("paymentEvent", ...).
+        // This method is kept as a no-op so the JS bridge doesn't reject the call.
         call.resolve();
     }
 

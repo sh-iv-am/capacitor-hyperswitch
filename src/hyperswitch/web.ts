@@ -1,6 +1,6 @@
 import { WebPlugin } from '@capacitor/core';
 
-import type { HyperConfig, HyperswitchPlugin, JSONValue, PaymentResult } from './definitions';
+import type { HyperConfig, HyperswitchPlugin, JSONValue, PaymentResult, UpdateIntentResult } from './definitions';
 
 let defaultProps = {
   from: 'capacitor',
@@ -8,7 +8,7 @@ let defaultProps = {
   publishableKey: '',
   sdkAuthorization: '',
   configuration: {
-    merchantDisplayName: "abc",
+    merchantDisplayName: 'abc',
     paymentSheetHeaderLabel: 'Run on actual device for experience',
     savedPaymentSheetHeaderLabel: 'Run on actual device for experience',
   },
@@ -20,17 +20,18 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
     defaultProps.publishableKey = config.publishableKey;
   }
 
-  async elements(options: { elementsOptions: JSONValue }): Promise<void> {
+  async elements(options: { elementsOptions: JSONValue }): Promise<{ handlerId: string }> {
     console.log('ELEMENTS', options);
+    return { handlerId: 'web-stub' };
   }
 
   async createElement(options: { type: string; createOptions: JSONValue }): Promise<void> {
     console.log('CREATE_ELEMENT', options);
   }
 
-  async updateIntent(options: { sdkAuthorization: string }): Promise<JSONValue> {
+  async updateIntent(options: { sdkAuthorization: string }): Promise<UpdateIntentResult> {
     console.log('UPDATE_INTENT', options);
-    return {};
+    return { type: 'success' };
   }
 
   async initPaymentSession(options: { paymentSessionOptions: JSONValue }): Promise<void> {
@@ -38,28 +39,34 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
     defaultProps.sdkAuthorization = options.paymentSessionOptions['sdkAuthorization'] as string;
   }
 
-  async getCustomerSavedPaymentMethods(): Promise<JSONValue> {
+  async getCustomerSavedPaymentMethods(): Promise<{ handlerId: string }> {
     console.log('GET_CUSTOMER_SAVED_PAYMENT_METHODS');
+    // Web stub: return a sentinel handlerId; handler methods will log and no-op.
+    return { handlerId: 'web-stub' };
+  }
+
+  async getCustomerSavedPaymentMethodData(options: { handlerId: string }): Promise<JSONValue> {
+    console.log('GET_CUSTOMER_SAVED_PAYMENT_METHOD_DATA', options);
     return {};
   }
 
-  async getCustomerDefaultSavedPaymentMethodData(): Promise<JSONValue> {
-    console.log('GET_CUSTOMER_DEFAULT_SAVED_PAYMENT_METHOD_DATA');
+  async getCustomerDefaultSavedPaymentMethodData(options: { handlerId: string }): Promise<JSONValue> {
+    console.log('GET_CUSTOMER_DEFAULT_SAVED_PAYMENT_METHOD_DATA', options);
     return {};
   }
 
-  async getCustomerLastUsedPaymentMethodData(): Promise<JSONValue> {
-    console.log('GET_CUSTOMER_LAST_USED_PAYMENT_METHOD_DATA');
+  async getCustomerLastUsedPaymentMethodData(options: { handlerId: string }): Promise<JSONValue> {
+    console.log('GET_CUSTOMER_LAST_USED_PAYMENT_METHOD_DATA', options);
     return {};
   }
 
-  async confirmWithCustomerDefaultPaymentMethod(): Promise<PaymentResult> {
-    console.log('CONFIRM_WITH_CUSTOMER_DEFAULT_PAYMENT_METHOD');
+  async confirmWithCustomerDefaultPaymentMethod(options: { handlerId: string }): Promise<PaymentResult> {
+    console.log('CONFIRM_WITH_CUSTOMER_DEFAULT_PAYMENT_METHOD', options);
     return { type: 'failed', message: 'Run on actual device' };
   }
 
-  async confirmWithCustomerLastUsedPaymentMethod(): Promise<PaymentResult> {
-    console.log('CONFIRM_WITH_CUSTOMER_LAST_USED_PAYMENT_METHOD');
+  async confirmWithCustomerLastUsedPaymentMethod(options: { handlerId: string }): Promise<PaymentResult> {
+    console.log('CONFIRM_WITH_CUSTOMER_LAST_USED_PAYMENT_METHOD', options);
     return { type: 'failed', message: 'Run on actual device' };
   }
 
@@ -138,7 +145,7 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
     return { type: 'failed', message: 'Run on actual device' };
   }
 
-  async elementOn(options: { event: string }): Promise<JSONValue | void> {
+  async elementOn(options: { event: string }): Promise<void> {
     console.log('ELEMENT_ON', options);
   }
 
@@ -169,5 +176,14 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
   }
   async elementClear(): Promise<void> {
     console.log('ELEMENT_CLEAR');
+  }
+
+  // addListener is provided by WebPlugin base class; this override satisfies the
+  // HyperswitchPlugin interface typing for the 'paymentEvent' event.
+  addListener(
+    event: 'paymentEvent',
+    handler: (data: import('./definitions').PaymentEventData) => void,
+  ): Promise<{ remove: () => Promise<void> }> {
+    return super.addListener(event, handler);
   }
 }

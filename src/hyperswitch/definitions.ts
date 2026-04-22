@@ -25,10 +25,42 @@ export interface PaymentResult {
   message?: string;
 }
 
+// ---- UpdateIntent result ----
+
+export interface UpdateIntentResult {
+  /** "success" | "totalFailure" | "partialFailure" */
+  type: string;
+  message?: string;
+  failedCount?: number;
+  succeededCount?: number;
+}
+
+// ---- Native widget event (pushed via notifyListeners / addListener) ----
+
+/**
+ * Native event emitted by PaymentElement or CvcWidget.
+ *
+ * `type` values:
+ *   PaymentElement: "FORM_STATUS" | "PAYMENT_METHOD_STATUS" |
+ *                   "PAYMENT_METHOD_INFO_CARD" | "PAYMENT_METHOD_INFO_BILLING_ADDRESS"
+ *   CvcWidget:      "CVC_STATUS"
+ *
+ * `payload` is the raw key/value data from the SDK (values serialised to strings on Android).
+ */
+export interface PaymentEventData {
+  type: string;
+  payload: Record<string, string>;
+}
+
 // ---- PaymentElement ----
 
 export interface PaymentElement {
-  on(event: string, handler?: (data?: JSONValue) => void): void;
+  /**
+   * Subscribe to a native widget event.
+   * Use the SDK event-type string as the event name, e.g. "FORM_STATUS", "PAYMENT_METHOD_STATUS".
+   * Internally wires up a Capacitor addListener("paymentEvent") and filters by type.
+   */
+  on(event: string, handler?: (data?: PaymentEventData) => void): void;
   collapse(): void;
   blur(): void;
   update(options: JSONValue): void;
@@ -48,27 +80,55 @@ export interface CvcWidget {
   destroy(): void;
 }
 
+// ---- PaymentSessionHandler ----
+// A first-class JS wrapper around the native PaymentSessionHandler.
+// Returned by Elements.getCustomerSavedPaymentMethods() and
+// InitPaymentSession.getCustomerSavedPaymentMethods().
+
+export interface PaymentSessionHandler {
+  /** The opaque ID used to route calls to the correct native handler instance. */
+  readonly handlerId: string;
+
+  /** All saved payment methods for the customer. */
+  getCustomerSavedPaymentMethodData(): Promise<JSONValue>;
+
+  /** The customer's default saved payment method. */
+  getCustomerDefaultSavedPaymentMethodData(): Promise<JSONValue>;
+
+  /** The customer's most recently used saved payment method. */
+  getCustomerLastUsedPaymentMethodData(): Promise<JSONValue>;
+
+  /** Confirm with the default saved method (uses mounted CvcWidget if present). */
+  confirmWithCustomerDefaultPaymentMethod(): Promise<PaymentResult>;
+
+  /** Confirm with the last-used saved method (uses mounted CvcWidget if present). */
+  confirmWithCustomerLastUsedPaymentMethod(): Promise<PaymentResult>;
+}
+
 // ---- Elements ----
 
 export interface Elements {
   create(options: { type: 'paymentElement' }): PaymentElement;
-  createCvcWidget(): CvcWidget;
-  updateIntent(intentResolver: () => Promise<string>): Promise<JSONValue>;
-  getCustomerDefaultSavedPaymentMethodData(): Promise<JSONValue>;
-  getCustomerLastUsedPaymentMethodData(): Promise<JSONValue>;
-  confirmWithCustomerDefaultPaymentMethod(): Promise<PaymentResult>;
-  confirmWithCustomerLastUsedPaymentMethod(): Promise<PaymentResult>;
+  create(options: { type: 'cvcWidget' }): CvcWidget;
+  updateIntent(intentResolver: () => Promise<string>): Promise<UpdateIntentResult>;
+
+  /**
+   * Fetches saved payment methods and returns a PaymentSessionHandler
+   * wrapper whose methods operate on that specific handler instance.
+   */
+  getCustomerSavedPaymentMethods(): Promise<PaymentSessionHandler>;
 }
 
 // ---- InitPaymentSession (legacy sheet flow) ----
 
 export interface InitPaymentSession {
   presentPaymentSheet(options?: JSONValue): Promise<PaymentResult>;
-  getCustomerSavedPaymentMethods(): Promise<JSONValue>;
-  getCustomerDefaultSavedPaymentMethodData(): Promise<JSONValue>;
-  getCustomerLastUsedPaymentMethodData(): Promise<JSONValue>;
-  confirmWithCustomerDefaultPaymentMethod(): Promise<PaymentResult>;
-  confirmWithCustomerLastUsedPaymentMethod(): Promise<PaymentResult>;
+
+  /**
+   * Fetches saved payment methods and returns a PaymentSessionHandler
+   * wrapper whose methods operate on that specific handler instance.
+   */
+  getCustomerSavedPaymentMethods(): Promise<PaymentSessionHandler>;
 }
 
 // ---- Top-level session ----
@@ -84,18 +144,19 @@ export interface HyperswitchPlugin {
   init(config: HyperConfig): Promise<void>;
 
   // Elements session
-  elements(options: { elementsOptions: JSONValue }): Promise<void>;
+  elements(options: { elementsOptions: JSONValue }): Promise<{ handlerId: string }>;
   createElement(options: { type: string; createOptions: JSONValue }): Promise<void>;
-  updateIntent(options: { sdkAuthorization: string }): Promise<JSONValue>;
+  updateIntent(options: { sdkAuthorization: string }): Promise<UpdateIntentResult>;
 
-  // Saved payment method data
-  getCustomerSavedPaymentMethods(): Promise<JSONValue>;
-  getCustomerDefaultSavedPaymentMethodData(): Promise<JSONValue>;
-  getCustomerLastUsedPaymentMethodData(): Promise<JSONValue>;
+  // Fetch saved methods — returns a handlerId the JS side holds onto
+  getCustomerSavedPaymentMethods(): Promise<{ handlerId: string }>;
 
-  // Confirm with saved methods
-  confirmWithCustomerDefaultPaymentMethod(): Promise<PaymentResult>;
-  confirmWithCustomerLastUsedPaymentMethod(): Promise<PaymentResult>;
+  // Handler-scoped methods — handlerId routes to the right native instance
+  getCustomerSavedPaymentMethodData(options: { handlerId: string }): Promise<JSONValue>;
+  getCustomerDefaultSavedPaymentMethodData(options: { handlerId: string }): Promise<JSONValue>;
+  getCustomerLastUsedPaymentMethodData(options: { handlerId: string }): Promise<JSONValue>;
+  confirmWithCustomerDefaultPaymentMethod(options: { handlerId: string }): Promise<PaymentResult>;
+  confirmWithCustomerLastUsedPaymentMethod(options: { handlerId: string }): Promise<PaymentResult>;
 
   // PaymentElement confirm
   confirmPayment(options: { confirmParams: JSONValue }): Promise<PaymentResult>;
@@ -104,8 +165,8 @@ export interface HyperswitchPlugin {
   initPaymentSession(options: { paymentSessionOptions: JSONValue }): Promise<void>;
   presentPaymentSheet(options: { sheetOptions: JSONValue }): Promise<PaymentResult>;
 
-  // PaymentElement lifecycle
-  elementOn(options: { event: string }): Promise<JSONValue | void>;
+  // PaymentElement lifecycle (elementOn is a no-op — subscriptions are set up natively)
+  elementOn(options: { event: string }): Promise<void>;
   elementCollapse(): Promise<void>;
   elementBlur(): Promise<void>;
   elementUpdate(options: { updateOptions: JSONValue }): Promise<void>;
@@ -114,4 +175,16 @@ export interface HyperswitchPlugin {
   elementMount(options: { selector: string }): Promise<void>;
   elementFocus(): Promise<void>;
   elementClear(): Promise<void>;
+
+  /**
+   * Subscribe to native widget events emitted by PaymentElement or CvcWidget.
+   * The handler receives a PaymentEventData object with `type` and `payload`.
+   *
+   * Use `element.on(eventType, handler)` in the JS wrapper layer instead of
+   * calling this directly.
+   */
+  addListener(
+    event: 'paymentEvent',
+    handler: (data: PaymentEventData) => void,
+  ): Promise<{ remove: () => Promise<void> }>;
 }

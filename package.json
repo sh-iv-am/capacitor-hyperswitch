@@ -12,6 +12,7 @@
     "dist/",
     "ios/Sources",
     "ios/Tests",
+    "scripts/android-setup.js",
     "Package.swift",
     "CapacitorHyperswitch.podspec"
   ],
@@ -30,6 +31,7 @@
     "native"
   ],
   "scripts": {
+    "postinstall": "node scripts/android-setup.js",
     "verify": "npm run verify:ios && npm run verify:android && npm run verify:web",
     "verify:ios": "xcodebuild -scheme CapacitorHyperswitch -destination generic/platform=iOS",
     "verify:android": "cd android && ./gradlew clean build test && cd ..",
