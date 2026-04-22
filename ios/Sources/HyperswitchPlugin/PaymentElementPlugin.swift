@@ -1,8 +1,8 @@
-import Foundation
 import Capacitor
+import Foundation
+import Hyperswitch
 import UIKit
 import WebKit
-import Hyperswitch
 
 /// iOS counterpart to Android's `PaymentElementPlugin.java`.
 ///
@@ -16,22 +16,23 @@ public class PaymentElementPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "PaymentElementPlugin"
     public let jsName = "PaymentElement"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "create",         returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "destroy",        returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "create", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "destroy", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "updatePosition", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "show",           returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "hide",           returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "show", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "hide", returnType: CAPPluginReturnPromise),
     ]
 
-    private var paymentElementView: PaymentElement?
+    private var paymentElementView: PaymentWidget?
 
     // ── create ─────────────────────────────────────────────────────────────────
 
     @objc func create(_ call: CAPPluginCall) {
-        guard let x      = call.getFloat("x"),
-              let y      = call.getFloat("y"),
-              let width  = call.getFloat("width"),
-              let height = call.getFloat("height") else {
+        guard let x = call.getFloat("x"),
+            let y = call.getFloat("y"),
+            let width = call.getFloat("width"),
+            let height = call.getFloat("height")
+        else {
             call.reject("x, y, width, and height are required")
             return
         }
@@ -47,16 +48,21 @@ public class PaymentElementPlugin: CAPPlugin, CAPBridgedPlugin {
                 return
             }
 
-            let view = PaymentElement(frame: CGRect(
-                x: CGFloat(x), y: CGFloat(y),
-                width: CGFloat(width), height: CGFloat(height)
-            ))
+            let frame = CGRect(
+                x: CGFloat(x),
+                y: CGFloat(y),
+                width: CGFloat(width),
+                height: CGFloat(height)
+            )
 
-            // Add to scrollView so the view travels with page content
-            webView.scrollView.addSubview(view)
+            // Register a callback so that when createElement creates the widget
+            // with payment session data, we can place it into the scrollView.
+            HyperswitchImpl.shared.setPendingPaymentViewCallback { [weak self] view in
 
-            self.paymentElementView = view
-            HyperswitchImpl.shared.registerPaymentElementView(view)
+                view.frame = frame
+                webView.scrollView.addSubview(view)
+                self?.paymentElementView = view as? PaymentWidget
+            }
 
             call.resolve()
         }
@@ -74,10 +80,11 @@ public class PaymentElementPlugin: CAPPlugin, CAPBridgedPlugin {
     // ── updatePosition ─────────────────────────────────────────────────────────
 
     @objc func updatePosition(_ call: CAPPluginCall) {
-        guard let x      = call.getFloat("x"),
-              let y      = call.getFloat("y"),
-              let width  = call.getFloat("width"),
-              let height = call.getFloat("height") else {
+        guard let x = call.getFloat("x"),
+            let y = call.getFloat("y"),
+            let width = call.getFloat("width"),
+            let height = call.getFloat("height")
+        else {
             call.reject("x, y, width, and height are required")
             return
         }
@@ -89,8 +96,10 @@ public class PaymentElementPlugin: CAPPlugin, CAPBridgedPlugin {
             }
 
             view.frame = CGRect(
-                x: CGFloat(x), y: CGFloat(y),
-                width: CGFloat(width), height: CGFloat(height)
+                x: CGFloat(x),
+                y: CGFloat(y),
+                width: CGFloat(width),
+                height: CGFloat(height)
             )
             call.resolve()
         }

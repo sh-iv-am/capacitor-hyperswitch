@@ -9,7 +9,7 @@ extension UIColor {
             hex.removeFirst()
         }
 
-        var rgb: UInt64 = 0xFF0000 // default red
+        var rgb: UInt64 = 0xFF0000  // default red
         Scanner(string: hex).scanHexInt64(&rgb)
 
         let r = CGFloat((rgb >> 16) & 0xFF) / 255.0

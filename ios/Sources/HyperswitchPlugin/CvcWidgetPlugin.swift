@@ -1,8 +1,8 @@
-import Foundation
 import Capacitor
+import Foundation
+import Hyperswitch
 import UIKit
 import WebKit
-import Hyperswitch
 
 /// iOS counterpart to Android's `CvcWidgetPlugin.java`.
 @objc(CvcWidgetPlugin)
@@ -10,11 +10,11 @@ public class CvcWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "CvcWidgetPlugin"
     public let jsName = "CvcWidget"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "create",         returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "destroy",        returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "create", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "destroy", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "updatePosition", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "show",           returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "hide",           returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "show", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "hide", returnType: CAPPluginReturnPromise),
     ]
 
     private var cvcWidgetView: CVCWidget?
@@ -22,10 +22,11 @@ public class CvcWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
     // ── create ─────────────────────────────────────────────────────────────────
 
     @objc func create(_ call: CAPPluginCall) {
-        guard let x      = call.getFloat("x"),
-              let y      = call.getFloat("y"),
-              let width  = call.getFloat("width"),
-              let height = call.getFloat("height") else {
+        guard let x = call.getFloat("x"),
+            let y = call.getFloat("y"),
+            let width = call.getFloat("width"),
+            let height = call.getFloat("height")
+        else {
             call.reject("x, y, width, and height are required")
             return
         }
@@ -40,15 +41,20 @@ public class CvcWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
                 return
             }
 
-            let view = CVCWidget(frame: CGRect(
-                x: CGFloat(x), y: CGFloat(y),
-                width: CGFloat(width), height: CGFloat(height)
-            ))
+            let frame = CGRect(
+                x: CGFloat(x),
+                y: CGFloat(y),
+                width: CGFloat(width),
+                height: CGFloat(height)
+            )
 
-            webView.scrollView.addSubview(view)
-
-            self.cvcWidgetView = view
-            HyperswitchImpl.shared.registerCvcWidgetView(view)
+            // Register a callback so that when createElement creates the widget
+            // with payment session data, we can place it into the scrollView.
+            HyperswitchImpl.shared.setPendingCvcViewCallback { [weak self] view in
+                view.frame = frame
+                webView.scrollView.addSubview(view)
+                self?.cvcWidgetView = view as? CVCWidget
+            }
 
             call.resolve()
         }
@@ -66,10 +72,11 @@ public class CvcWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
     // ── updatePosition ─────────────────────────────────────────────────────────
 
     @objc func updatePosition(_ call: CAPPluginCall) {
-        guard let x      = call.getFloat("x"),
-              let y      = call.getFloat("y"),
-              let width  = call.getFloat("width"),
-              let height = call.getFloat("height") else {
+        guard let x = call.getFloat("x"),
+            let y = call.getFloat("y"),
+            let width = call.getFloat("width"),
+            let height = call.getFloat("height")
+        else {
             call.reject("x, y, width, and height are required")
             return
         }
@@ -81,8 +88,10 @@ public class CvcWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
             }
 
             view.frame = CGRect(
-                x: CGFloat(x), y: CGFloat(y),
-                width: CGFloat(width), height: CGFloat(height)
+                x: CGFloat(x),
+                y: CGFloat(y),
+                width: CGFloat(width),
+                height: CGFloat(height)
             )
             call.resolve()
         }

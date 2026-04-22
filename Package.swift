@@ -7,7 +7,8 @@ let package = Package(
     products: [
         .library(
             name: "CapacitorHyperswitch",
-            targets: ["HyperswitchPlugin"])
+            targets: ["HyperswitchPlugin"]
+        )
     ],
     dependencies: [
         .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", from: "8.0.0")
@@ -17,12 +18,14 @@ let package = Package(
             name: "HyperswitchPlugin",
             dependencies: [
                 .product(name: "Capacitor", package: "capacitor-swift-pm"),
-                .product(name: "Cordova", package: "capacitor-swift-pm")
+                .product(name: "Cordova", package: "capacitor-swift-pm"),
             ],
-            path: "ios/Sources/HyperswitchPlugin"),
+            path: "ios/Sources/HyperswitchPlugin"
+        ),
         .testTarget(
             name: "HyperswitchPluginTests",
             dependencies: ["HyperswitchPlugin"],
-            path: "ios/Tests/HyperswitchPluginTests")
+            path: "ios/Tests/HyperswitchPluginTests"
+        ),
     ]
 )
