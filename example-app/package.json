@@ -10,7 +10,16 @@
   "scripts": {
     "start": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "build:plugin": "cd .. && npm run build && cd example-app",
+    "build:android": "npm run build:plugin && npm run build && npx cap sync android",
+    "build:ios": "npm run build:plugin && npm run build && npx cap sync ios",
+    "run:android": "npm run build:android && npx cap run android",
+    "run:ios": "npm run build:ios && npx cap run ios",
+    "sync:ios": "npx cap add ios --packagemanager Cocoapods",
+    "open:android": "npm run build:android && npx cap open android",
+    "open:ios": "npm run build:ios && npx cap open ios",
+    "preview": "vite preview",
+    "server": "node mockServer.cjs"
   },
   "dependencies": {
     "@capacitor/core": "latest",
@@ -20,8 +29,11 @@
   },
   "devDependencies": {
     "@capacitor/cli": "latest",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0"
   },
-  "author": "",
+  "author": "sh-iv-am",
   "license": "ISC"
 }

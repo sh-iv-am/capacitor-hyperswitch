@@ -5,3 +5,7 @@ node_modules/
 .DS_Store
 .sourcemaps
 dist/
+.env
+mockData.cjs
+vendor
+Gemfile.lock

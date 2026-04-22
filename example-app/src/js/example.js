@@ -1,6 +1,198 @@
+import { Capacitor } from '@capacitor/core';
 import { Hyperswitch } from 'capacitor-hyperswitch';
 
-window.testEcho = () => {
-    const inputValue = document.getElementById("echoInput").value;
-    Hyperswitch.echo({ value: inputValue })
+const SERVER_URL =
+  Capacitor.getPlatform() === 'android'
+    ? 'http://10.0.2.2:5252'
+    : 'http://localhost:5252';
+
+// ── Shared state ─────────────────────────────────────────────────────────────
+
+let fetchedData = null;       // { publishableKey, sdkAuthorization, paymentId }
+
+// Flow 1
+let flow1Session = null;      // InitPaymentSession
+let cvcWidget = null;
+
+// Flow 2
+let elementsSession = null;   // Elements
+let paymentElement = null;
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function out(id, text) {
+  document.getElementById(id).textContent = text;
 }
+
+function resultText(r) {
+  return `type: ${r.type}${r.message ? '\nmessage: ' + r.message : ''}`;
+}
+
+// ── Step 1: Fetch ─────────────────────────────────────────────────────────────
+
+window.fetchPaymentIntent = async () => {
+  out('fetchOutput', 'Fetching…');
+  try {
+    const res = await fetch(`${SERVER_URL}/create-payment-intent`);
+    if (!res.ok) throw new Error((await res.json()).error ?? `HTTP ${res.status}`);
+    fetchedData = await res.json();
+    out('fetchOutput',
+      `publishableKey: ${fetchedData.publishableKey}\n` +
+      `sdkAuthorization: ${fetchedData.sdkAuthorization}\n` +
+      `paymentId: ${fetchedData.paymentId ?? '(none)'}`
+    );
+  } catch (err) {
+    fetchedData = null;
+    out('fetchOutput', 'Error: ' + err.message);
+  }
+};
+
+// ── Flow 1 — initPaymentSession ───────────────────────────────────────────────
+
+window.initPaymentSession = async () => {
+  if (!fetchedData) { out('initSessionOutput', 'Fetch first.'); return; }
+  out('initSessionOutput', 'Initializing…');
+  try {
+    const session = Hyperswitch.init({ publishableKey: fetchedData.publishableKey });
+    flow1Session = await session.initPaymentSession({ sdkAuthorization: fetchedData.sdkAuthorization });
+    out('initSessionOutput', 'initPaymentSession ready.');
+  } catch (err) {
+    out('initSessionOutput', 'Error: ' + err.message);
+  }
+};
+
+// Path A: presentPaymentSheet
+
+window.presentSheet = async () => {
+  if (!flow1Session) { out('sheetOutput', 'Call initPaymentSession first.'); return; }
+  out('sheetOutput', 'Presenting…');
+  try {
+    const result = await flow1Session.presentPaymentSheet();
+    out('sheetOutput', resultText(result));
+  } catch (err) {
+    out('sheetOutput', 'Error: ' + err.message);
+  }
+};
+
+// Path B: saved methods
+
+window.getCustomerSavedPaymentMethods = async () => {
+  if (!flow1Session) { out('savedMethodsOutput', 'Call initPaymentSession first.'); return; }
+  out('savedMethodsOutput', 'Fetching saved methods…');
+  try {
+    const data = await flow1Session.getCustomerSavedPaymentMethods();
+    out('savedMethodsOutput', JSON.stringify(data, null, 2));
+  } catch (err) {
+    out('savedMethodsOutput', 'Error: ' + err.message);
+  }
+};
+
+window.mountCvcWidget = () => {
+  if (!flow1Session) { out('savedMethodsOutput', 'Call initPaymentSession first.'); return; }
+  if (!elementsSession) { out('savedMethodsOutput', 'CvcWidget requires Elements session — call elements() first (Flow 2).'); return; }
+  cvcWidget = elementsSession.createCvcWidget();
+  cvcWidget.mount('#cvc-widget');
+};
+
+window.unmountCvcWidget = () => {
+  cvcWidget?.unmount();
+  cvcWidget = null;
+};
+
+window.getLastUsedMethod = async () => {
+  if (!flow1Session) { out('savedDataOutput', 'Call initPaymentSession first.'); return; }
+  try {
+    const data = await flow1Session.getCustomerLastUsedPaymentMethodData();
+    out('savedDataOutput', 'Last used:\n' + JSON.stringify(data, null, 2));
+  } catch (err) {
+    out('savedDataOutput', 'Error: ' + err.message);
+  }
+};
+
+window.getDefaultMethod = async () => {
+  if (!flow1Session) { out('savedDataOutput', 'Call initPaymentSession first.'); return; }
+  try {
+    const data = await flow1Session.getCustomerDefaultSavedPaymentMethodData();
+    out('savedDataOutput', 'Default:\n' + JSON.stringify(data, null, 2));
+  } catch (err) {
+    out('savedDataOutput', 'Error: ' + err.message);
+  }
+};
+
+window.confirmWithLastUsed = async () => {
+  if (!flow1Session) { out('confirmSavedOutput', 'Call initPaymentSession first.'); return; }
+  out('confirmSavedOutput', 'Confirming with last used…');
+  try {
+    const result = await flow1Session.confirmWithCustomerLastUsedPaymentMethod();
+    out('confirmSavedOutput', resultText(result));
+  } catch (err) {
+    out('confirmSavedOutput', 'Error: ' + err.message);
+  }
+};
+
+window.confirmWithDefault = async () => {
+  if (!flow1Session) { out('confirmSavedOutput', 'Call initPaymentSession first.'); return; }
+  out('confirmSavedOutput', 'Confirming with default…');
+  try {
+    const result = await flow1Session.confirmWithCustomerDefaultPaymentMethod();
+    out('confirmSavedOutput', resultText(result));
+  } catch (err) {
+    out('confirmSavedOutput', 'Error: ' + err.message);
+  }
+};
+
+// ── Flow 2 — Elements ─────────────────────────────────────────────────────────
+
+window.initElements = async () => {
+  if (!fetchedData) { out('elementsOutput', 'Fetch first.'); return; }
+  out('elementsOutput', 'Creating Elements session…');
+  try {
+    const session = Hyperswitch.init({ publishableKey: fetchedData.publishableKey });
+    elementsSession = await session.elements({ sdkAuthorization: fetchedData.sdkAuthorization });
+    out('elementsOutput', 'Elements session ready.');
+  } catch (err) {
+    out('elementsOutput', 'Error: ' + err.message);
+  }
+};
+
+window.mountPaymentElement = () => {
+  if (!elementsSession) { out('confirmOutput', 'Call elements() first.'); return; }
+  paymentElement = elementsSession.create({ type: 'paymentElement' });
+  paymentElement.mount('#payment-element');
+};
+
+window.unmountPaymentElement = () => {
+  paymentElement?.unmount();
+  paymentElement = null;
+};
+
+window.confirmViaElement = async () => {
+  if (!paymentElement) { out('confirmOutput', 'Mount PaymentElement first.'); return; }
+  out('confirmOutput', 'Confirming…');
+  try {
+    const result = await paymentElement.confirmPayment();
+    out('confirmOutput', resultText(result));
+  } catch (err) {
+    out('confirmOutput', 'Error: ' + err.message);
+  }
+};
+
+window.updateIntent = async () => {
+  if (!elementsSession) { out('confirmOutput', 'Call elements() first.'); return; }
+  if (!fetchedData?.paymentId) { out('confirmOutput', 'No paymentId available.'); return; }
+  out('confirmOutput', 'Updating intent…');
+  try {
+    const result = await elementsSession.updateIntent(async () => {
+      const res = await fetch(`${SERVER_URL}/update-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentId: fetchedData.paymentId, currency: 'HKD', amount: 2999 }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return (await res.json()).sdkAuthorization;
+    });
+    out('confirmOutput', 'updateIntent result: ' + JSON.stringify(result));
+  } catch (err) {
+    out('confirmOutput', 'Error: ' + err.message);
+  }
+};

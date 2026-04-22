@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'io.hyperswitch.plugin'
 
 android {
     namespace = "com.example.plugin"
