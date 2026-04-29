@@ -8,6 +8,7 @@ import type {
   UpdateIntentResult,
   CvcWidget,
   PaymentSessionHandler,
+  CvcWidgetOptions,
 } from './definitions';
 import { paymentElementPlugin } from './views/payment-element/index';
 import { cvcWidgetPlugin } from './views/cvc-widget/index';
@@ -133,10 +134,14 @@ export function createPaymentElement(plugin: HyperswitchPlugin): PaymentElement 
   };
 }
 
-export function createCvcWidget(plugin: HyperswitchPlugin): CvcWidget {
+export function createCvcWidget(
+  plugin: HyperswitchPlugin,
+  options?: CvcWidgetOptions
+): CvcWidget {
   let mountedElement: HTMLElement | null = null;
   let resizeObserver: ResizeObserver | null = null;
   let intersectionObserver: IntersectionObserver | null = null;
+  const eventHandlers: Map<string, Array<(data?: PaymentEventData) => void>> = new Map();
 
   function syncNativeView(): void {
     if (!mountedElement) return;
@@ -150,17 +155,35 @@ export function createCvcWidget(plugin: HyperswitchPlugin): CvcWidget {
     intersectionObserver = null;
   }
 
+  // Set up event listener for CVC widget events
+  plugin.addListener('paymentEvent', (eventData: PaymentEventData) => {
+    if (eventData.type === 'CVC_STATUS') {
+      const handlers = eventHandlers.get('change');
+      handlers?.forEach(handler => handler(eventData));
+    }
+  });
+
   return {
-    mount(selector: string): void {
+    mount(selector: string, mountOptions?: CvcWidgetOptions): void {
       const el = document.querySelector(selector) as HTMLElement | null;
       if (!el) {
         console.error(`[Hyperswitch] CvcWidget mount: element not found for "${selector}"`);
         return;
       }
       mountedElement = el;
+      
+      // Merge options: mount options take precedence over create options
+      const mergedOptions: CvcWidgetOptions = {
+        ...options,
+        ...mountOptions,
+      };
+      
       // Create the native view first, then bind it via createElement
       cvcWidgetPlugin.create({ ...getContentPosition(el) });
-      plugin.createElement({ type: 'cvcWidget', createOptions: {} });
+      plugin.createElement({ 
+        type: 'cvcWidget', 
+        createOptions: mergedOptions as unknown as JSONValue 
+      });
       resizeObserver = new ResizeObserver(() => syncNativeView());
       resizeObserver.observe(el);
       intersectionObserver = observeVisibility(
@@ -180,15 +203,22 @@ export function createCvcWidget(plugin: HyperswitchPlugin): CvcWidget {
       cvcWidgetPlugin.destroy();
       mountedElement = null;
     },
+    on(event: string, handler?: (data?: PaymentEventData) => void): void {
+      if (!handler) return;
+      if (!eventHandlers.has(event)) {
+        eventHandlers.set(event, []);
+      }
+      eventHandlers.get(event)?.push(handler);
+    },
   };
 }
 
 export function createElements(plugin: HyperswitchPlugin): Elements {
   function create(options: { type: 'paymentElement' }): PaymentElement;
-  function create(options: { type: 'cvcWidget' }): CvcWidget;
-  function create(options: { type: 'paymentElement' | 'cvcWidget' }): PaymentElement | CvcWidget {
+  function create(options: { type: 'cvcWidget'; options?: CvcWidgetOptions }): CvcWidget;
+  function create(options: { type: 'paymentElement' | 'cvcWidget'; options?: CvcWidgetOptions }): PaymentElement | CvcWidget {
     if (options.type === 'cvcWidget') {
-      return createCvcWidget(plugin);
+      return createCvcWidget(plugin, options.options);
     }
     return createPaymentElement(plugin);
   }

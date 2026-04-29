@@ -196,7 +196,7 @@ public class HyperswitchImpl {
      * Binds a native view to the Elements session.
      * Mirrors:
      *   paymentElementBound = elements.bind(paymentElement, buildConfiguration()) { on(...) { } }
-     *   cvcWidgetBound      = elements.bind(cvcWidget) { on(CvcWidgetEvents.CvcStatus) { } }
+     *   cvcWidgetBound      = elements.bind(cvcWidget, configMap) { on(CvcWidgetEvents.CvcStatus) { } }
      */
     public void createElement(String type, JSObject createOptions) {
         Logger.info("Hyperswitch", "createElement called with type: " + type);
@@ -243,10 +243,13 @@ public class HyperswitchImpl {
                     Logger.error("Hyperswitch", new Throwable("CvcWidgetView not registered yet"));
                     return;
                 }
-                // Mirrors: elements.bind(cvcWidget) { on(CvcWidgetEvents.CvcStatus) { println(it) } }
+                // Build CVC widget configuration Map from createOptions
+                // Pass directly to elements.bind() - SDK should handle conversion
+                Map<String, Object> configMap = buildCvcWidgetMap(createOptions);
+                // Mirrors: elements.bind(cvcWidget, configMap) { on(CvcWidgetEvents.CvcStatus) { println(it) } }
                 cvcWidgetBound = elements.bind(
                         cvcWidgetView,
-                        new HashMap<>(),
+                        configMap,
                         builder -> {
                             builder.on(CvcWidgetEvents.CvcStatus.INSTANCE, event -> {
                                 fireEvent("CVC_STATUS", event.getPayload());
@@ -255,7 +258,7 @@ public class HyperswitchImpl {
                             return Unit.INSTANCE;
                         }
                 );
-                Logger.info("Hyperswitch", "CVCWidget bound with CvcStatus subscription");
+                Logger.info("Hyperswitch", "CVCWidget bound with configuration Map");
             }
         });
     }
@@ -570,5 +573,72 @@ public class HyperswitchImpl {
             Logger.error("Hyperswitch", "Error mapping PaymentResult", e);
         }
         return js;
+    }
+
+    // ── CVC Widget Configuration Builder ─────────────────────────────────────────────────────────
+
+    /**
+     * Builds CVC widget configuration Map from JS createOptions.
+     * Simple passthrough - SDK should handle the Map properly.
+     */
+    private Map<String, Object> buildCvcWidgetMap(JSObject createOptions) {
+        Map<String, Object> config = new HashMap<>();
+        
+        if (createOptions == null) {
+            // Always add subscribedEvents for CVC widget (must be Array, not List)
+            config.put("subscribedEvents", new String[]{"CVC_STATUS"});
+            return config;
+        }
+        
+        // Extract appearance - passthrough as Map
+        JSObject appearanceObj = createOptions.getJSObject("appearance");
+        if (appearanceObj != null) {
+            Map<String, Object> appearanceMap = convertJsObjectToMap(appearanceObj);
+            if (!appearanceMap.isEmpty()) {
+                config.put("appearance", appearanceMap);
+            }
+        }
+        
+        // Placeholder (mapped to cvv field structure)
+        String placeholder = createOptions.getString("placeholder");
+        if (placeholder != null && !placeholder.isEmpty()) {
+            Map<String, Object> placeholderMap = new HashMap<>();
+            placeholderMap.put("cvv", placeholder);
+            config.put("placeholder", placeholderMap);
+        }
+        
+        // SDK Authorization (if provided)
+        String sdkAuth = createOptions.getString("sdkAuthorization");
+        if (sdkAuth != null && !sdkAuth.isEmpty()) {
+            config.put("sdkAuthorization", sdkAuth);
+        }
+        
+        // Always subscribe to CVC_STATUS events (required for CVC widget, must be Array not List)
+        config.put("subscribedEvents", new String[]{"CVC_STATUS"});
+        
+        return config;
+    }
+    
+    /**
+     * Helper to recursively convert JSObject to Map<String, Object>
+     */
+    private Map<String, Object> convertJsObjectToMap(JSObject obj) {
+        Map<String, Object> map = new HashMap<>();
+        if (obj == null) return map;
+        
+        try {
+            for (java.util.Iterator<String> it = obj.keys(); it.hasNext(); ) {
+                String key = it.next();
+                Object value = obj.opt(key);
+                if (value instanceof JSObject) {
+                    map.put(key, convertJsObjectToMap((JSObject) value));
+                } else if (value != null) {
+                    map.put(key, value);
+                }
+            }
+        } catch (Exception e) {
+            Logger.error("Hyperswitch", "Error converting JSObject to Map", e);
+        }
+        return map;
     }
 }

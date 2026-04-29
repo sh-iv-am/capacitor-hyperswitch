@@ -16,6 +16,64 @@ export interface HyperConfig {
   customConfig?: CustomConfig;
 }
 
+// ---- CVC Widget Appearance Types (matches React Native) ----
+
+export interface CvcColors {
+  primary?: string;
+  background?: string;
+  componentBackground?: string;
+  componentBorder?: string;
+  componentText?: string;
+  primaryText?: string;
+  secondaryText?: string;
+  placeholderText?: string;
+  icon?: string;
+  error?: string;
+  loaderBackground?: string;
+  loaderForeground?: string;
+}
+
+export interface CvcColorType {
+  light?: CvcColors;
+  dark?: CvcColors;
+}
+
+export interface CvcOffsetType {
+  x?: number;
+  y?: number;
+}
+
+export interface CvcShadowConfig {
+  color?: string;
+  opacity?: number;
+  blurRadius?: number;
+  offset?: CvcOffsetType;
+  intensity?: number;
+}
+
+export interface CvcShapes {
+  borderRadius?: number;
+  borderWidth?: number;
+  shadow?: CvcShadowConfig;
+}
+
+export interface CvcFont {
+  family?: string;
+  scale?: number;
+}
+
+export interface CvcAppearance {
+  colors?: CvcColorType;
+  shapes?: CvcShapes;
+  font?: CvcFont;
+}
+
+export interface CvcWidgetOptions {
+  appearance?: CvcAppearance;
+  placeholder?: string;
+  sdkAuthorization?: string;
+}
+
 // ---- Shared types ----
 
 export type JSONValue = Record<string, unknown>;
@@ -75,9 +133,20 @@ export interface PaymentElement {
 // ---- CvcWidget ----
 
 export interface CvcWidget {
-  mount(selector: string): void;
+  /**
+   * Mount the CVC widget to a DOM selector.
+   * @param selector - CSS selector for the container element
+   * @param options - Optional configuration for appearance and behavior
+   */
+  mount(selector: string, options?: CvcWidgetOptions): void;
   unmount(): void;
   destroy(): void;
+  /**
+   * Subscribe to CVC widget events.
+   * @param event - Event name ('change' for CVC status updates)
+   * @param handler - Callback function for the event
+   */
+  on(event: string, handler?: (data?: PaymentEventData) => void): void;
 }
 
 // ---- PaymentSessionHandler ----
@@ -109,7 +178,7 @@ export interface PaymentSessionHandler {
 
 export interface Elements {
   create(options: { type: 'paymentElement' }): PaymentElement;
-  create(options: { type: 'cvcWidget' }): CvcWidget;
+  create(options: { type: 'cvcWidget'; options?: CvcWidgetOptions }): CvcWidget;
   updateIntent(intentResolver: () => Promise<string>): Promise<UpdateIntentResult>;
 
   /**
