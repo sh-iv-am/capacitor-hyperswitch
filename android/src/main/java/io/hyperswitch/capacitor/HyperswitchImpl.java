@@ -4,8 +4,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Logger;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -212,9 +217,11 @@ public class HyperswitchImpl {
                     Logger.error("Hyperswitch", new Throwable("PaymentElementView not registered yet"));
                     return;
                 }
+                // Build PaymentElement configuration Map from createOptions
+                Map<String, Object> configMap = buildPaymentElementConfiguration(createOptions);
                 paymentElementBound = elements.bind(
                         paymentElementView,
-                        new PaymentSheet.Configuration("abc"),
+                        configMap,
                         builder -> {
                             // Subscribe to PaymentElement events
                             builder.on(PaymentEvents.FormStatus.INSTANCE, event -> {
@@ -236,7 +243,7 @@ public class HyperswitchImpl {
                             return Unit.INSTANCE;
                         }
                 );
-                Logger.info("Hyperswitch", "PaymentElement bound with event subscriptions");
+                Logger.info("Hyperswitch", "PaymentElement bound with configuration Map");
 
             } else if ("cvcWidget".equalsIgnoreCase(type) || "cvc".equalsIgnoreCase(type)) {
                 if (cvcWidgetView == null) {
@@ -361,40 +368,33 @@ public class HyperswitchImpl {
             return;
         }
 
-//        Map<String, Object> configuration = new HashMap<>();
-//        configuration.put("merchantDisplayName", "abc");
-//
-//        Map<String, Object> configurationMap = new HashMap<>();
-//        configurationMap.put("type", "payment");
-//        configurationMap.put("configuration", configuration);
+        // Build configuration Map from sheetOptions (matches React Native pattern)
+        Map<String, Object> configMap = buildPaymentSheetConfiguration(sheetOptions);
 
-        paymentSession.presentPaymentSheet(new PaymentSheet.Configuration("abc"), null, paymentResult -> {
+        // For now, use the existing presentPaymentSheet with Configuration object
+        // SDK doesn't have a Map-based overload for PaymentSession yet
+        PaymentSheet.Configuration configuration = new PaymentSheet.Configuration("Merchant");
+        paymentSession.presentPaymentSheet(configuration, null, paymentResult -> {
             try {
                 JSObject jsResult = new JSObject();
-                switch (paymentResult) {
-                    case PaymentResult.Completed result -> {
-                        jsResult.put("type", "completed");
-                        jsResult.put("message", result.getData());
-                        callback.onResult(jsResult);
-                    }
-                    case PaymentResult.Canceled result -> {
-                        jsResult.put("type", "canceled");
-                        jsResult.put("message", result.getData());
-                        callback.onResult(jsResult);
-                    }
-                    case PaymentResult.Failed result -> {
-                        String msg = result.getThrowable().getMessage() != null
-                                ? result.getThrowable().getMessage()
-                                : "Payment failed";
-                        jsResult.put("type", "failed");
-                        jsResult.put("message", msg);
-                        callback.onResult(jsResult);
-                    }
-                    default -> {
-                        jsResult.put("type", "failed");
-                        jsResult.put("message", "Unknown status");
-                        callback.onResult(jsResult);
-                    }
+                if (paymentResult instanceof PaymentResult.Completed) {
+                    jsResult.put("type", "completed");
+                    jsResult.put("message", ((PaymentResult.Completed) paymentResult).getData());
+                    callback.onResult(jsResult);
+                } else if (paymentResult instanceof PaymentResult.Canceled) {
+                    jsResult.put("type", "canceled");
+                    jsResult.put("message", ((PaymentResult.Canceled) paymentResult).getData());
+                    callback.onResult(jsResult);
+                } else if (paymentResult instanceof PaymentResult.Failed) {
+                    String msg = ((PaymentResult.Failed) paymentResult).getThrowable().getMessage();
+                    if (msg == null) msg = "Payment failed";
+                    jsResult.put("type", "failed");
+                    jsResult.put("message", msg);
+                    callback.onResult(jsResult);
+                } else {
+                    jsResult.put("type", "failed");
+                    jsResult.put("message", "Unknown status");
+                    callback.onResult(jsResult);
                 }
             } catch (Exception e) {
                 Logger.error("Hyperswitch", "Error in presentPaymentSheet callback", e);
@@ -620,25 +620,246 @@ public class HyperswitchImpl {
     }
     
     /**
-     * Helper to recursively convert JSObject to Map<String, Object>
+     * Builds PaymentSheet configuration Map from JS sheetOptions (for presentPaymentSheet).
+     * Matches React Native PaymentSheetOptions structure.
      */
+    private Map<String, Object> buildPaymentSheetConfiguration(JSObject sheetOptions) {
+        Map<String, Object> config = new HashMap<>();
+        
+        if (sheetOptions == null) {
+            return config;
+        }
+        
+        // Extract appearance - passthrough as Map
+        JSObject appearanceObj = sheetOptions.getJSObject("appearance");
+        if (appearanceObj != null) {
+            Map<String, Object> appearanceMap = convertJsObjectToMap(appearanceObj);
+            if (!appearanceMap.isEmpty()) {
+                config.put("appearance", appearanceMap);
+            }
+        }
+        
+        // Placeholder
+        JSObject placeholderObj = sheetOptions.getJSObject("placeholder");
+        if (placeholderObj != null) {
+            Map<String, Object> placeholderMap = convertJsObjectToMap(placeholderObj);
+            if (!placeholderMap.isEmpty()) {
+                config.put("placeholder", placeholderMap);
+            }
+        }
+        
+        // Text labels
+        String primaryButtonLabel = sheetOptions.getString("primaryButtonLabel");
+        if (primaryButtonLabel != null) {
+            config.put("primaryButtonLabel", primaryButtonLabel);
+        }
+        
+        String paymentSheetHeaderLabel = sheetOptions.getString("paymentSheetHeaderLabel");
+        if (paymentSheetHeaderLabel != null) {
+            config.put("paymentSheetHeaderLabel", paymentSheetHeaderLabel);
+        }
+        
+        String savedPaymentSheetHeaderLabel = sheetOptions.getString("savedPaymentSheetHeaderLabel");
+        if (savedPaymentSheetHeaderLabel != null) {
+            config.put("savedPaymentSheetHeaderLabel", savedPaymentSheetHeaderLabel);
+        }
+        
+        String merchantDisplayName = sheetOptions.getString("merchantDisplayName");
+        if (merchantDisplayName != null) {
+            config.put("merchantDisplayName", merchantDisplayName);
+        }
+        
+        // Payment flow options
+        if (sheetOptions.has("allowsDelayedPaymentMethods")) {
+            config.put("allowsDelayedPaymentMethods", sheetOptions.optBoolean("allowsDelayedPaymentMethods", false));
+        }
+        
+        if (sheetOptions.has("allowsPaymentMethodsRequiringShippingAddress")) {
+            config.put("allowsPaymentMethodsRequiringShippingAddress", sheetOptions.optBoolean("allowsPaymentMethodsRequiringShippingAddress", false));
+        }
+        
+        // Display options
+        if (sheetOptions.has("displaySavedPaymentMethods")) {
+            config.put("displaySavedPaymentMethods", sheetOptions.optBoolean("displaySavedPaymentMethods", true));
+        }
+        
+        if (sheetOptions.has("displaySavedPaymentMethodsCheckbox")) {
+            config.put("displaySavedPaymentMethodsCheckbox", sheetOptions.optBoolean("displaySavedPaymentMethodsCheckbox", true));
+        }
+        
+        if (sheetOptions.has("displayDefaultSavedPaymentIcon")) {
+            config.put("displayDefaultSavedPaymentIcon", sheetOptions.optBoolean("displayDefaultSavedPaymentIcon", true));
+        }
+        
+        // Feature flags
+        if (sheetOptions.has("disableBranding")) {
+            config.put("disableBranding", sheetOptions.optBoolean("disableBranding", false));
+        }
+        
+        if (sheetOptions.has("defaultView")) {
+            config.put("defaultView", sheetOptions.optBoolean("defaultView", false));
+        }
+        
+        if (sheetOptions.has("hideConfirmButton")) {
+            config.put("hideConfirmButton", sheetOptions.optBoolean("hideConfirmButton", false));
+        }
+        
+        return config;
+    }
+    
+    /**
+     * Builds PaymentElement configuration Map from JS createOptions.
+     * Similar to PaymentSheetOptions but for Elements API.
+     */
+    private Map<String, Object> buildPaymentElementConfiguration(JSObject createOptions) {
+        Map<String, Object> config = new HashMap<>();
+
+        if (createOptions == null) return config;
+
+        JSObject appearanceObj = createOptions.getJSObject("appearance");
+        if (appearanceObj != null) {
+            Map<String, Object> appearanceMap = convertJsObjectToMap(appearanceObj);
+            if (!appearanceMap.isEmpty()) {
+                config.put("appearance", appearanceMap);
+            }
+        }
+
+        JSObject placeholderObj = createOptions.getJSObject("placeholder");
+        if (placeholderObj != null) {
+            Map<String, Object> placeholderMap = convertJsObjectToMap(placeholderObj);
+            if (!placeholderMap.isEmpty()) {
+                config.put("placeholder", placeholderMap);
+            }
+        }
+        
+        // Essential fields - REQUIRED for PaymentElement to render
+        String merchantDisplayName = createOptions.getString("merchantDisplayName");
+        if (merchantDisplayName != null && !merchantDisplayName.isEmpty()) {
+            config.put("merchantDisplayName", merchantDisplayName);
+        } else {
+            // Provide default to prevent silent close
+            config.put("merchantDisplayName", "Merchant");
+        }
+        
+        // Optional label fields
+        String primaryButtonLabel = createOptions.getString("primaryButtonLabel");
+        if (primaryButtonLabel != null && !primaryButtonLabel.isEmpty()) {
+            config.put("primaryButtonLabel", primaryButtonLabel);
+        }
+        
+        String paymentSheetHeaderLabel = createOptions.getString("paymentSheetHeaderLabel");
+        if (paymentSheetHeaderLabel != null && !paymentSheetHeaderLabel.isEmpty()) {
+            config.put("paymentSheetHeaderLabel", paymentSheetHeaderLabel);
+        }
+        
+        String savedPaymentSheetHeaderLabel = createOptions.getString("savedPaymentSheetHeaderLabel");
+        if (savedPaymentSheetHeaderLabel != null && !savedPaymentSheetHeaderLabel.isEmpty()) {
+            config.put("savedPaymentSheetHeaderLabel", savedPaymentSheetHeaderLabel);
+        }
+        
+        // Payment flow options
+        if (createOptions.has("allowsDelayedPaymentMethods")) {
+            config.put("allowsDelayedPaymentMethods", createOptions.optBoolean("allowsDelayedPaymentMethods", false));
+        }
+        
+        if (createOptions.has("allowsPaymentMethodsRequiringShippingAddress")) {
+            config.put("allowsPaymentMethodsRequiringShippingAddress", createOptions.optBoolean("allowsPaymentMethodsRequiringShippingAddress", false));
+        }
+        
+        // Display options
+        if (createOptions.has("displaySavedPaymentMethods")) {
+            config.put("displaySavedPaymentMethods", createOptions.optBoolean("displaySavedPaymentMethods", true));
+        }
+        
+        if (createOptions.has("displaySavedPaymentMethodsCheckbox")) {
+            config.put("displaySavedPaymentMethodsCheckbox", createOptions.optBoolean("displaySavedPaymentMethodsCheckbox", true));
+        }
+        
+        if (createOptions.has("displayDefaultSavedPaymentIcon")) {
+            config.put("displayDefaultSavedPaymentIcon", createOptions.optBoolean("displayDefaultSavedPaymentIcon", true));
+        }
+        
+        // Feature flags
+        if (createOptions.has("disableBranding")) {
+            config.put("disableBranding", createOptions.optBoolean("disableBranding", false));
+        }
+        
+        if (createOptions.has("defaultView")) {
+            config.put("defaultView", createOptions.optBoolean("defaultView", false));
+        }
+        
+        if (createOptions.has("hideConfirmButton")) {
+            config.put("hideConfirmButton", createOptions.optBoolean("hideConfirmButton", false));
+        }
+        
+        config.put("subscribedEvents", new String[]{
+            "FORM_STATUS",
+            "PAYMENT_METHOD_STATUS",
+            "PAYMENT_METHOD_INFO_CARD",
+            "PAYMENT_METHOD_INFO_BILLING_ADDRESS"
+        });
+
+        return config;
+    }
+    
     private Map<String, Object> convertJsObjectToMap(JSObject obj) {
+        return convertJsObjectToMapInternal(obj, false);
+    }
+
+    private Map<String, Object> convertJsObjectToMapInternal(JSONObject obj, boolean isAppearanceContext) {
         Map<String, Object> map = new HashMap<>();
         if (obj == null) return map;
-        
+
         try {
             for (java.util.Iterator<String> it = obj.keys(); it.hasNext(); ) {
                 String key = it.next();
                 Object value = obj.opt(key);
-                if (value instanceof JSObject) {
-                    map.put(key, convertJsObjectToMap((JSObject) value));
+
+                if (value instanceof JSONObject) {
+                    boolean childIsAppearance = isAppearanceContext ||
+                        key.equals("appearance") || key.equals("colors") ||
+                        key.equals("shapes") || key.equals("font") ||
+                        key.equals("light") || key.equals("dark");
+                    map.put(key, convertJsObjectToMapInternal((JSONObject) value, childIsAppearance));
+                } else if (value instanceof JSONArray) {
+                    JSONArray arr = (JSONArray) value;
+                    List<Object> list = new ArrayList<>(arr.length());
+                    for (int i = 0; i < arr.length(); i++) {
+                        Object item = arr.opt(i);
+                        if (item instanceof JSONObject) {
+                            list.add(convertJsObjectToMapInternal((JSONObject) item, isAppearanceContext));
+                        } else if (item instanceof Double && isAppearanceNumericKey(key)) {
+                            list.add(((Double) item).floatValue());
+                        } else {
+                            list.add(item);
+                        }
+                    }
+                    map.put(key, list);
+                } else if (value instanceof Double && isAppearanceNumericKey(key)) {
+                    map.put(key, ((Double) value).floatValue());
                 } else if (value != null) {
                     map.put(key, value);
                 }
             }
         } catch (Exception e) {
-            Logger.error("Hyperswitch", "Error converting JSObject to Map", e);
+            Logger.error("Hyperswitch", "Error converting JSONObject to Map", e);
         }
+
         return map;
+    }
+    
+    /**
+     * Checks if a key is a numeric field in appearance that needs Float conversion
+     */
+    private boolean isAppearanceNumericKey(String key) {
+        return key.equals("borderRadius") || 
+               key.equals("borderWidth") || 
+               key.equals("scale") ||
+               key.equals("cornerRadius") ||
+               key.equals("x") || 
+               key.equals("y") ||
+               key.equals("opacity") ||
+               key.equals("blurRadius") ||
+               key.equals("intensity");
     }
 }

@@ -8,6 +8,7 @@ import type {
   UpdateIntentResult,
   CvcWidget,
   PaymentSessionHandler,
+  PaymentSheetOptions,
   CvcWidgetOptions,
 } from './definitions';
 import { paymentElementPlugin } from './views/payment-element/index';
@@ -43,7 +44,7 @@ function observeVisibility(el: HTMLElement, onVisible: () => void, onHidden: () 
   return obs;
 }
 
-export function createPaymentElement(plugin: HyperswitchPlugin): PaymentElement {
+export function createPaymentElement(plugin: HyperswitchPlugin, options?: PaymentSheetOptions): PaymentElement {
   let mountedElement: HTMLElement | null = null;
   let resizeObserver: ResizeObserver | null = null;
   let mutationObserver: MutationObserver | null = null;
@@ -118,7 +119,7 @@ export function createPaymentElement(plugin: HyperswitchPlugin): PaymentElement 
       mountedElement = el;
       // Create the native view first, then bind it via createElement
       paymentElementPlugin.create({ ...getContentPosition(el) });
-      plugin.createElement({ type: 'paymentElement', createOptions: {} });
+      plugin.createElement({ type: 'paymentElement', createOptions: options as unknown as JSONValue ?? {} });
       startObserving(el);
       plugin.elementMount({ selector });
     },
@@ -214,13 +215,13 @@ export function createCvcWidget(
 }
 
 export function createElements(plugin: HyperswitchPlugin): Elements {
-  function create(options: { type: 'paymentElement' }): PaymentElement;
+  function create(options: { type: 'paymentElement'; options?: PaymentSheetOptions }): PaymentElement;
   function create(options: { type: 'cvcWidget'; options?: CvcWidgetOptions }): CvcWidget;
-  function create(options: { type: 'paymentElement' | 'cvcWidget'; options?: CvcWidgetOptions }): PaymentElement | CvcWidget {
+  function create(options: { type: 'paymentElement' | 'cvcWidget'; options?: PaymentSheetOptions | CvcWidgetOptions }): PaymentElement | CvcWidget {
     if (options.type === 'cvcWidget') {
-      return createCvcWidget(plugin, options.options);
+      return createCvcWidget(plugin, options.options as CvcWidgetOptions);
     }
-    return createPaymentElement(plugin);
+    return createPaymentElement(plugin, options.options as PaymentSheetOptions);
   }
 
   return {

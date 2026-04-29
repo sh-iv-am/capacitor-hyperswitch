@@ -16,13 +16,25 @@ export interface HyperConfig {
   customConfig?: CustomConfig;
 }
 
-// ---- CVC Widget Appearance Types (matches React Native) ----
+// ---- PaymentSheet Configuration Types (matches React Native) ----
 
-export interface CvcColors {
+export type SubscriptionEvent =
+  | 'PAYMENT_METHOD_INFO_CARD'
+  | 'PAYMENT_METHOD_STATUS'
+  | 'FORM_STATUS'
+  | 'PAYMENT_METHOD_INFO_ADDRESS'
+  | 'CVC_STATUS';
+
+export type Theme = 'Default' | 'Light' | 'Dark' | 'Minimal' | 'FlatMinimal';
+export type Layout = 'tabs' | 'accordion' | 'spacedAccordion';
+
+export interface Colors {
   primary?: string;
+  surface?: string;
   background?: string;
   componentBackground?: string;
   componentBorder?: string;
+  componentDivider?: string;
   componentText?: string;
   primaryText?: string;
   secondaryText?: string;
@@ -33,39 +45,142 @@ export interface CvcColors {
   loaderForeground?: string;
 }
 
-export interface CvcColorType {
-  light?: CvcColors;
-  dark?: CvcColors;
+export interface ColorType {
+  light?: Colors;
+  dark?: Colors;
 }
 
-export interface CvcOffsetType {
+export interface OffsetType {
   x?: number;
   y?: number;
 }
 
-export interface CvcShadowConfig {
+export interface ShadowConfig {
   color?: string;
   opacity?: number;
   blurRadius?: number;
-  offset?: CvcOffsetType;
+  offset?: OffsetType;
   intensity?: number;
 }
 
-export interface CvcShapes {
+export interface Shapes {
   borderRadius?: number;
   borderWidth?: number;
-  shadow?: CvcShadowConfig;
+  shadow?: ShadowConfig;
 }
 
-export interface CvcFont {
+export interface Font {
   family?: string;
   scale?: number;
+  headingTextSizeAdjust?: number;
+  subHeadingTextSizeAdjust?: number;
+  placeholderTextSizeAdjust?: number;
+  buttonTextSizeAdjust?: number;
+  errorTextSizeAdjust?: number;
+  linkTextSizeAdjust?: number;
+  modalTextSizeAdjust?: number;
+  cardTextSizeAdjust?: number;
 }
 
+export interface PrimaryButtonColors {
+  background?: string;
+  onBackground?: string;
+  border?: string;
+}
+
+export interface PrimaryButtonShape {
+  cornerRadius?: number;
+  borderWidth?: number;
+  shadow?: ShadowConfig;
+}
+
+export interface PrimaryButton {
+  colorsLight?: PrimaryButtonColors;
+  colorsDark?: PrimaryButtonColors;
+  shape?: PrimaryButtonShape;
+}
+
+export interface Appearance {
+  colors?: ColorType;
+  shapes?: Shapes;
+  font?: Font;
+  primaryButton?: PrimaryButton;
+  theme?: Theme;
+  layout?: Layout;
+  locale?: string;
+}
+
+export interface Placeholder {
+  cardNumber?: string;
+  expiryDate?: string;
+  cvv?: string;
+}
+
+export interface Address {
+  firstName?: string;
+  lastName?: string;
+  city?: string;
+  country?: string;
+  line1?: string;
+  line2?: string;
+  zip?: string;
+  state?: string;
+}
+
+export interface Phone {
+  number?: string;
+  countryCode?: string;
+}
+
+export interface BillingDetails {
+  address?: Address;
+  email?: string;
+  name?: string;
+  phone?: Phone;
+}
+
+export interface ShippingDetails {
+  address?: Address;
+  email?: string;
+  name?: string;
+  phone?: Phone;
+}
+
+export interface CustomerConfiguration {
+  id: string;
+  ephemeralKeySecret: string;
+}
+
+export interface PaymentSheetOptions {
+  sdkAuthorization: string;
+  appearance?: Appearance;
+  primaryButtonLabel?: string;
+  primaryButtonColor?: string;
+  paymentSheetHeaderLabel?: string;
+  savedPaymentSheetHeaderLabel?: string;
+  merchantDisplayName?: string;
+  allowsDelayedPaymentMethods?: boolean;
+  allowsPaymentMethodsRequiringShippingAddress?: boolean;
+  shippingDetails?: ShippingDetails;
+  defaultBillingDetails?: BillingDetails;
+  displaySavedPaymentMethods?: boolean;
+  displaySavedPaymentMethodsCheckbox?: boolean;
+  displayDefaultSavedPaymentIcon?: boolean;
+  placeholder?: Placeholder;
+  disableBranding?: boolean;
+  defaultView?: boolean;
+  enablePartialLoading?: boolean;
+  customer?: CustomerConfiguration;
+  subscribedEvents?: SubscriptionEvent[];
+  hideConfirmButton?: boolean;
+}
+
+// ---- CVC Widget Types (subset of Appearance, matches React Native) ----
+
 export interface CvcAppearance {
-  colors?: CvcColorType;
-  shapes?: CvcShapes;
-  font?: CvcFont;
+  colors?: ColorType;
+  shapes?: Shapes;
+  font?: Pick<Font, 'family' | 'scale'>;
 }
 
 export interface CvcWidgetOptions {
@@ -177,7 +292,7 @@ export interface PaymentSessionHandler {
 // ---- Elements ----
 
 export interface Elements {
-  create(options: { type: 'paymentElement' }): PaymentElement;
+  create(options: { type: 'paymentElement'; options?: PaymentSheetOptions }): PaymentElement;
   create(options: { type: 'cvcWidget'; options?: CvcWidgetOptions }): CvcWidget;
   updateIntent(intentResolver: () => Promise<string>): Promise<UpdateIntentResult>;
 
