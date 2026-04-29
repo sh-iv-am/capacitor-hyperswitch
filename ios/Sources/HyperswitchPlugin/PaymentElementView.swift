@@ -1,7 +1,23 @@
 import Foundation
+import Hyperswitch
 import UIKit
 
-// PaymentElementView.swift is intentionally left as a stub.
-// The real SDK view (PaymentElement from hyperswitch-sdk-ios) is used directly
-// by PaymentElementPlugin.swift. This file is kept only to avoid breaking any
-// existing references during migration.
+public final class PaymentElementContainer: UIView {
+    private(set) var widget: PaymentWidget?
+
+    @discardableResult
+    func attach(paymentSession: PaymentSession, configuration: [String: Any]) -> PaymentWidget {
+        if let existing = widget { return existing }
+        let widget = PaymentWidget(paymentSession: paymentSession, configuration: configuration)
+        widget.frame = bounds
+        widget.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        addSubview(widget)
+        self.widget = widget
+        return widget
+    }
+
+    func detach() {
+        widget?.removeFromSuperview()
+        widget = nil
+    }
+}

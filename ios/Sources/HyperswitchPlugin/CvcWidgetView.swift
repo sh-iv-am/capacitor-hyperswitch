@@ -1,7 +1,23 @@
 import Foundation
+import Hyperswitch
 import UIKit
 
-// CvcWidgetView.swift is intentionally left as a stub.
-// The real SDK view (CVCWidget from hyperswitch-sdk-ios) is used directly
-// by CvcWidgetPlugin.swift. This file is kept only to avoid breaking any
-// existing references during migration.
+public final class CVCWidgetContainer: UIView {
+    private(set) var widget: CVCWidget?
+
+    @discardableResult
+    func attach(paymentSession: PaymentSession, configuration: [String: Any] = [:]) -> CVCWidget {
+        if let existing = widget { return existing }
+        let widget = CVCWidget(paymentSession: paymentSession, configuration: configuration)
+        widget.frame = bounds
+        widget.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        addSubview(widget)
+        self.widget = widget
+        return widget
+    }
+
+    func detach() {
+        widget?.removeFromSuperview()
+        widget = nil
+    }
+}

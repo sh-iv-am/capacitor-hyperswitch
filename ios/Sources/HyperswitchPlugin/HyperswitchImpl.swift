@@ -2,8 +2,6 @@ import Foundation
 import Hyperswitch
 import UIKit
 
-/// iOS counterpart to Android's `HyperswitchImpl.java`.
-/// All method signatures and behaviour mirror the Android implementation.
 public class HyperswitchImpl {
 
     // ── Singleton ──────────────────────────────────────────────────────────────
@@ -14,26 +12,14 @@ public class HyperswitchImpl {
     // ── State ──────────────────────────────────────────────────────────────────
 
     private var paymentSession: PaymentSession?
-    private var paymentWidget: PaymentWidget?
-    private var cvcWidget: CVCWidget?
 
-    // Elements API state
-    //    private var elements: Elements?
+    // Containers placed by the plugins in webView.scrollView. The SDK widget
+    // is attached lazily during createElement(), once paymentSession exists.
+    private weak var paymentElementContainer: PaymentElementContainer?
+    private weak var cvcWidgetContainer: CVCWidgetContainer?
+
     /// Registry: handlerId → PaymentSessionHandler (supports multiple concurrent sessions)
     private var handlerRegistry: [String: PaymentSessionHandler] = [:]
-
-    // SDK view references (set by PaymentElementPlugin / CvcWidgetPlugin)
-    //    private var paymentElementView: PaymentWidget?
-    //    private var cvcWidgetView: CVCWidget?
-
-    // Pending view-placement callbacks registered by the plugins.
-    // When createElement is called, it creates the widget with session data
-    // and fires the callback so the plugin can add it to the scrollView.
-    typealias ViewReadyCallback = (UIView) -> Void
-    private var pendingPaymentViewCallback: ViewReadyCallback?
-    private var pendingCvcViewCallback: ViewReadyCallback?
-
-    // Legacy PaymentSession (used by presentPaymentSheet)
 
     // ── Callback typealiases ───────────────────────────────────────────────────
 
@@ -42,31 +28,17 @@ public class HyperswitchImpl {
     public typealias VoidCallback = () -> Void
     public typealias HandlerReadyCallback = (String) -> Void
 
-    // ── View Registration ──────────────────────────────────────────────────────
-
-    func registerPaymentElementView(_ view: PaymentWidget?) {
-        self.paymentWidget = view
+    // ── Container Registration ─────────────────────────────────────────────────
+    func registerPaymentElementContainer(_ container: PaymentElementContainer?) {
+        self.paymentElementContainer = container
     }
 
-    func registerCvcWidgetView(_ view: CVCWidget?) {
-        self.cvcWidget = view
+    func registerCVCWidgetContainer(_ container: CVCWidgetContainer?) {
+        self.cvcWidgetContainer = container
     }
 
-    /// Called by PaymentElementPlugin.create() to register a closure that will
-    /// place the view into the scrollView once createElement creates it with session data.
-    func setPendingPaymentViewCallback(_ callback: @escaping ViewReadyCallback) {
-        DispatchQueue.main.async {
-            self.pendingPaymentViewCallback = callback
-        }
-    }
-
-    /// Called by CvcWidgetPlugin.create() to register a closure that will
-    /// place the view into the scrollView once createElement creates it with session data.
-    func setPendingCvcViewCallback(_ callback: @escaping ViewReadyCallback) {
-        DispatchQueue.main.async {
-            self.pendingCvcViewCallback = callback
-        }
-    }
+    private var paymentWidget: PaymentWidget? { paymentElementContainer?.widget }
+    private var cvcWidget: CVCWidget? { cvcWidgetContainer?.widget }
 
     // ── Init ───────────────────────────────────────────────────────────────────
 
@@ -95,7 +67,6 @@ public class HyperswitchImpl {
         onError: @escaping ErrorCallback
     ) {
         DispatchQueue.main.async {
-
             guard let paymentSession = self.paymentSession else {
                 onError("Hyperswitch not initialised — call init() first")
                 return
@@ -104,7 +75,9 @@ public class HyperswitchImpl {
             paymentSession.getCustomerSavedPaymentMethods { handler in
                 let handlerId = UUID().uuidString
                 self.handlerRegistry[handlerId] = handler
-                print("[Hyperswitch] Elements ready, PaymentSessionHandler stored with id: \(handlerId)")
+                print(
+                    "[Hyperswitch] Elements ready, PaymentSessionHandler stored with id: \(handlerId)"
+                )
                 onReady(handlerId)
             }
 
@@ -113,8 +86,8 @@ public class HyperswitchImpl {
 
     // ── createElement ──────────────────────────────────────────────────────────
 
-    /// Creates a native widget with session data and fires the pending callback
-    /// so the plugin can place it into the scrollView at the correct position.
+    /// Builds the SDK widget with session data and attaches it to the container
+    /// the plugin already placed in the scrollView during create().
     func createElement(type: String, createOptions: [String: Any]?) {
         guard let paymentSession = paymentSession else {
             print("[Hyperswitch] elements() must be called before createElement()")
@@ -124,20 +97,22 @@ public class HyperswitchImpl {
         DispatchQueue.main.async {
             let lower = type.lowercased()
             if lower == "paymentelement" || lower == "payment" {
-                let widget = PaymentWidget(
+                guard let container = self.paymentElementContainer else {
+                    print("[Hyperswitch] PaymentElement container not registered — call create() first")
+                    return
+                }
+                container.attach(
                     paymentSession: paymentSession,
                     configuration: ["merchantDisplayName": "ggggg"]
                 )
-                self.paymentWidget = widget
-                self.pendingPaymentViewCallback?(widget)
-                self.pendingPaymentViewCallback = nil
                 print("[Hyperswitch] PaymentElement created and placed successfully")
 
             } else if lower == "cvcwidget" || lower == "cvc" {
-                let widget = CVCWidget(paymentSession: paymentSession, configuration: [:])
-                self.cvcWidget = widget
-                self.pendingCvcViewCallback?(widget)
-                self.pendingCvcViewCallback = nil
+                guard let container = self.cvcWidgetContainer else {
+                    print("[Hyperswitch] CVCWidget container not registered — call create() first")
+                    return
+                }
+                container.attach(paymentSession: paymentSession, configuration: [:])
                 print("[Hyperswitch] CVCWidget created and placed successfully")
             }
         }

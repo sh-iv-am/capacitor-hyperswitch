@@ -4,11 +4,10 @@ import Hyperswitch
 import UIKit
 import WebKit
 
-/// iOS counterpart to Android's `CvcWidgetPlugin.java`.
-@objc(CvcWidgetPlugin)
-public class CvcWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
-    public let identifier = "CvcWidgetPlugin"
-    public let jsName = "CvcWidget"
+@objc(CVCWidgetPlugin)
+public class CVCWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
+    public let identifier = "CVCWidgetPlugin"
+    public let jsName = "CVCWidget"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "create", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "destroy", returnType: CAPPluginReturnPromise),
@@ -17,12 +16,13 @@ public class CvcWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "hide", returnType: CAPPluginReturnPromise),
     ]
 
-    private var cvcWidgetView: CVCWidget?
+    private var container: CVCWidgetContainer?
 
     // ── create ─────────────────────────────────────────────────────────────────
 
     @objc func create(_ call: CAPPluginCall) {
-        guard let x = call.getFloat("x"),
+        guard
+            let x = call.getFloat("x"),
             let y = call.getFloat("y"),
             let width = call.getFloat("width"),
             let height = call.getFloat("height")
@@ -34,10 +34,10 @@ public class CvcWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
 
-            self.removeWidgetView()
+            self.removeCVCContainer()
 
             guard let webView = self.webView else {
-                call.reject("Unable to access webView")
+                call.reject("unable to access webView")
                 return
             }
 
@@ -48,13 +48,10 @@ public class CvcWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
                 height: CGFloat(height)
             )
 
-            // Register a callback so that when createElement creates the widget
-            // with payment session data, we can place it into the scrollView.
-            HyperswitchImpl.shared.setPendingCvcViewCallback { [weak self] view in
-                view.frame = frame
-                webView.scrollView.addSubview(view)
-                self?.cvcWidgetView = view as? CVCWidget
-            }
+            let container = CVCWidgetContainer(frame: frame)
+            webView.scrollView.addSubview(container)
+            self.container = container
+            HyperswitchImpl.shared.registerCVCWidgetContainer(container)
 
             call.resolve()
         }
@@ -64,7 +61,7 @@ public class CvcWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func destroy(_ call: CAPPluginCall) {
         DispatchQueue.main.async { [weak self] in
-            self?.removeWidgetView()
+            self?.removeCVCContainer()
             call.resolve()
         }
     }
@@ -82,12 +79,12 @@ public class CvcWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         DispatchQueue.main.async { [weak self] in
-            guard let view = self?.cvcWidgetView else {
-                call.reject("No CVC widget view to update")
+            guard let container = self?.container else {
+                call.reject("no CVC widget view to update")
                 return
             }
 
-            view.frame = CGRect(
+            container.frame = CGRect(
                 x: CGFloat(x),
                 y: CGFloat(y),
                 width: CGFloat(width),
@@ -101,23 +98,24 @@ public class CvcWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func show(_ call: CAPPluginCall) {
         DispatchQueue.main.async { [weak self] in
-            self?.cvcWidgetView?.isHidden = false
+            self?.container?.isHidden = false
             call.resolve()
         }
     }
 
     @objc func hide(_ call: CAPPluginCall) {
         DispatchQueue.main.async { [weak self] in
-            self?.cvcWidgetView?.isHidden = true
+            self?.container?.isHidden = true
             call.resolve()
         }
     }
 
     // ── helpers ────────────────────────────────────────────────────────────────
 
-    private func removeWidgetView() {
-        cvcWidgetView?.removeFromSuperview()
-        cvcWidgetView = nil
-        HyperswitchImpl.shared.registerCvcWidgetView(nil)
+    private func removeCVCContainer() {
+        container?.detach()
+        container?.removeFromSuperview()
+        container = nil
+        HyperswitchImpl.shared.registerCVCWidgetContainer(nil)
     }
 }

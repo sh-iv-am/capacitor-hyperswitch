@@ -4,13 +4,6 @@ import Hyperswitch
 import UIKit
 import WebKit
 
-/// iOS counterpart to Android's `PaymentElementPlugin.java`.
-///
-/// On iOS the PaymentElement view is added to `webView.scrollView` at the
-/// content-coordinate position reported by JS, so it scrolls with the page
-/// automatically — no manual scroll-offset tracking needed.
-/// `show` / `hide` are called by the JS IntersectionObserver when the
-/// placeholder enters or leaves the viewport.
 @objc(PaymentElementPlugin)
 public class PaymentElementPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "PaymentElementPlugin"
@@ -23,12 +16,13 @@ public class PaymentElementPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "hide", returnType: CAPPluginReturnPromise),
     ]
 
-    private var paymentElementView: PaymentWidget?
+    private var container: PaymentElementContainer?
 
     // ── create ─────────────────────────────────────────────────────────────────
 
     @objc func create(_ call: CAPPluginCall) {
-        guard let x = call.getFloat("x"),
+        guard
+            let x = call.getFloat("x"),
             let y = call.getFloat("y"),
             let width = call.getFloat("width"),
             let height = call.getFloat("height")
@@ -40,11 +34,10 @@ public class PaymentElementPlugin: CAPPlugin, CAPBridgedPlugin {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
 
-            // Remove any existing view first
-            self.removeElementView()
+            self.removePaymentElementContainer()
 
             guard let webView = self.webView else {
-                call.reject("Unable to access webView")
+                call.reject("unable to access webView")
                 return
             }
 
@@ -55,14 +48,10 @@ public class PaymentElementPlugin: CAPPlugin, CAPBridgedPlugin {
                 height: CGFloat(height)
             )
 
-            // Register a callback so that when createElement creates the widget
-            // with payment session data, we can place it into the scrollView.
-            HyperswitchImpl.shared.setPendingPaymentViewCallback { [weak self] view in
-
-                view.frame = frame
-                webView.scrollView.addSubview(view)
-                self?.paymentElementView = view as? PaymentWidget
-            }
+            let container = PaymentElementContainer(frame: frame)
+            webView.scrollView.addSubview(container)
+            self.container = container
+            HyperswitchImpl.shared.registerPaymentElementContainer(container)
 
             call.resolve()
         }
@@ -72,7 +61,7 @@ public class PaymentElementPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func destroy(_ call: CAPPluginCall) {
         DispatchQueue.main.async { [weak self] in
-            self?.removeElementView()
+            self?.removePaymentElementContainer()
             call.resolve()
         }
     }
@@ -90,12 +79,12 @@ public class PaymentElementPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         DispatchQueue.main.async { [weak self] in
-            guard let view = self?.paymentElementView else {
-                call.reject("No payment element view to update")
+            guard let container = self?.container else {
+                call.reject("no payment element view to update")
                 return
             }
 
-            view.frame = CGRect(
+            container.frame = CGRect(
                 x: CGFloat(x),
                 y: CGFloat(y),
                 width: CGFloat(width),
@@ -109,23 +98,24 @@ public class PaymentElementPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func show(_ call: CAPPluginCall) {
         DispatchQueue.main.async { [weak self] in
-            self?.paymentElementView?.isHidden = false
+            self?.container?.isHidden = false
             call.resolve()
         }
     }
 
     @objc func hide(_ call: CAPPluginCall) {
         DispatchQueue.main.async { [weak self] in
-            self?.paymentElementView?.isHidden = true
+            self?.container?.isHidden = true
             call.resolve()
         }
     }
 
     // ── helpers ────────────────────────────────────────────────────────────────
 
-    private func removeElementView() {
-        paymentElementView?.removeFromSuperview()
-        paymentElementView = nil
-        HyperswitchImpl.shared.registerPaymentElementView(nil)
+    private func removePaymentElementContainer() {
+        container?.detach()
+        container?.removeFromSuperview()
+        container = nil
+        HyperswitchImpl.shared.registerPaymentElementContainer(nil)
     }
 }
