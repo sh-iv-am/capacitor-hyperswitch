@@ -4,13 +4,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Logger;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -26,6 +21,7 @@ import io.hyperswitch.paymentsession.PaymentSessionHandler;
 import io.hyperswitch.paymentsheet.PaymentResult;
 import io.hyperswitch.sdk.Elements;
 import io.hyperswitch.sdk.Hyperswitch;
+import io.hyperswitch.utils.ConversionUtils;
 import io.hyperswitch.view.CVCWidget;
 import io.hyperswitch.view.HyperswitchElement;
 import io.hyperswitch.view.PaymentElement;
@@ -216,10 +212,7 @@ public class HyperswitchImpl {
                     Logger.error("Hyperswitch", new Throwable("PaymentElementView not registered yet"));
                     return;
                 }
-                Map<String, Object> configMap = convertJsObjectToMap(createOptions);
-                if (!configMap.containsKey("merchantDisplayName")) {
-                    configMap.put("merchantDisplayName", "Merchant");
-                }
+                Map<String, Object> configMap = jsObjectToMap(createOptions);
                 paymentElementBound = elements.bind(
                         paymentElementView,
                         configMap,
@@ -251,7 +244,7 @@ public class HyperswitchImpl {
                     Logger.error("Hyperswitch", new Throwable("CvcWidgetView not registered yet"));
                     return;
                 }
-                Map<String, Object> configMap = convertJsObjectToMap(createOptions);
+                Map<String, Object> configMap = jsObjectToMap(createOptions);
                 cvcWidgetBound = elements.bind(
                         cvcWidgetView,
                         configMap,
@@ -373,7 +366,7 @@ public class HyperswitchImpl {
         configMap.put("type", "payment");
 
         if (sheetOptions != null) {
-            Map<String, Object> configurationMap = convertJsObjectToMap(sheetOptions);
+            Map<String, Object> configurationMap = jsObjectToMap(sheetOptions);
             if (!configurationMap.isEmpty()) {
                 configMap.put("configuration", configurationMap);
             }
@@ -579,75 +572,13 @@ public class HyperswitchImpl {
         }
         return js;
     }
-    private Map<String, Object> convertJsObjectToMap(JSObject obj) {
-        return convertJsObjectToMapInternal(obj, false);
-    }
 
-    private Map<String, Object> convertJsObjectToMapInternal(JSONObject obj, boolean isAppearanceContext) {
-        Map<String, Object> map = new HashMap<>();
-        if (obj == null) return map;
-
+    private Map<String, Object> jsObjectToMap(JSObject obj) {
         try {
-            for (java.util.Iterator<String> it = obj.keys(); it.hasNext(); ) {
-                String key = it.next();
-                Object value = obj.opt(key);
-
-                if (value instanceof JSONObject) {
-                    boolean childIsAppearance = isAppearanceContext ||
-                        key.equals("appearance") || key.equals("colors") ||
-                        key.equals("shapes") || key.equals("font") ||
-                        key.equals("light") || key.equals("dark") ||
-                        key.equals("primaryButton") || key.equals("shadow") ||
-                        key.equals("offset");
-                    map.put(key, convertJsObjectToMapInternal((JSONObject) value, childIsAppearance));
-                } else if (value instanceof JSONArray) {
-                    JSONArray arr = (JSONArray) value;
-                    List<Object> list = new ArrayList<>(arr.length());
-                    for (int i = 0; i < arr.length(); i++) {
-                        Object item = arr.opt(i);
-                        if (item instanceof JSONObject) {
-                            list.add(convertJsObjectToMapInternal((JSONObject) item, isAppearanceContext));
-                        } else if (item instanceof Double && isAppearanceNumericKey(key)) {
-                            list.add(((Double) item).floatValue());
-                        } else {
-                            list.add(item);
-                        }
-                    }
-                    map.put(key, list);
-                } else if (value instanceof Double && isAppearanceNumericKey(key)) {
-                    map.put(key, ((Double) value).floatValue());
-                } else if (value != null) {
-                    map.put(key, value);
-                }
-            }
+            return new HashMap<>(ConversionUtils.readableMapToMap(ConversionUtils.convertJsonToMap(obj)));
         } catch (Exception e) {
-            Logger.error("Hyperswitch", "Error converting JSONObject to Map", e);
+            Logger.error("Hyperswitch", "Error converting JSObject to Map", e);
+            return new HashMap<>();
         }
-
-        return map;
-    }
-    
-    /**
-     * Checks if a key is a numeric field in appearance that needs Float conversion
-     */
-    private boolean isAppearanceNumericKey(String key) {
-        return key.equals("borderRadius") ||
-               key.equals("borderWidth") ||
-               key.equals("scale") ||
-               key.equals("cornerRadius") ||
-               key.equals("x") ||
-               key.equals("y") ||
-               key.equals("opacity") ||
-               key.equals("blurRadius") ||
-               key.equals("intensity") ||
-               key.equals("headingTextSizeAdjust") ||
-               key.equals("subHeadingTextSizeAdjust") ||
-               key.equals("placeholderTextSizeAdjust") ||
-               key.equals("buttonTextSizeAdjust") ||
-               key.equals("errorTextSizeAdjust") ||
-               key.equals("linkTextSizeAdjust") ||
-               key.equals("modalTextSizeAdjust") ||
-               key.equals("cardTextSizeAdjust") ||
-               key.equals("fontSizeSp");
     }
 }
