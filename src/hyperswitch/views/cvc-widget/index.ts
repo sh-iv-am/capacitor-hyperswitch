@@ -1,8 +1,8 @@
 import { registerPlugin } from '@capacitor/core';
 
-import type { CvcWidgetPlugin } from './definitions';
+import type { CVCWidgetPlugin } from './definitions';
 
-export const cvcWidgetPlugin = registerPlugin<CvcWidgetPlugin>('CvcWidget', {
+export const cvcWidgetPlugin = registerPlugin<CVCWidgetPlugin>('CVCWidget', {
   web: () => import('./web').then((m) => new m.CvcWidgetWeb()),
 });
 

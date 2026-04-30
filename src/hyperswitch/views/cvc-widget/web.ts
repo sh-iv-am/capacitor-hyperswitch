@@ -1,8 +1,8 @@
 import { WebPlugin } from '@capacitor/core';
 
-import type { CvcWidgetPlugin } from './definitions';
+import type { CVCWidgetPlugin } from './definitions';
 
-export class CvcWidgetWeb extends WebPlugin implements CvcWidgetPlugin {
+export class CvcWidgetWeb extends WebPlugin implements CVCWidgetPlugin {
   async create(options: { x: number; y: number; width: number; height: number }): Promise<void> {
     console.log('CvcWidget create', options);
   }

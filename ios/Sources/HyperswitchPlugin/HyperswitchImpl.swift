@@ -205,13 +205,14 @@ public class HyperswitchImpl {
             onError("paymentSession not ready — call initPaymentSession() first")
             return
         }
-
-        session.getCustomerSavedPaymentMethods { [weak self] handler in
-            guard let self = self else { return }
-            let handlerId = UUID().uuidString
-            self.handlerRegistry[handlerId] = handler
-            print("[Hyperswitch] getCustomerSavedPaymentMethods ready, id: \(handlerId)")
-            onReady(handlerId)
+        DispatchQueue.main.async {
+            session.getCustomerSavedPaymentMethods { [weak self] handler in
+                guard let self = self else { return }
+                let handlerId = UUID().uuidString
+                self.handlerRegistry[handlerId] = handler
+                print("[Hyperswitch] getCustomerSavedPaymentMethods ready, id: \(handlerId)")
+                onReady(handlerId)
+            }
         }
     }
 

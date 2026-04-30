@@ -11,8 +11,8 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 
 import io.hyperswitch.view.CVCWidget;
 
-@CapacitorPlugin(name = "CvcWidget")
-public class CvcWidgetPlugin extends Plugin {
+@CapacitorPlugin(name = "CVCWidget")
+public class CVCWidgetPlugin extends Plugin {
 
     private CVCWidget cvcWidget;
 
@@ -64,7 +64,7 @@ public class CvcWidgetPlugin extends Plugin {
             updateVisibility(view, webView);
 
             cvcWidget = view;
-            HyperswitchImpl.getInstance().registerCvcWidgetView(view);
+            HyperswitchImpl.getInstance().registerCVCWidgetView(view);
 
             scrollListener = (v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
                 if (cvcWidget != null) {
@@ -133,7 +133,7 @@ public class CvcWidgetPlugin extends Plugin {
             ((ViewGroup) cvcWidget.getParent()).removeView(cvcWidget);
         }
         cvcWidget = null;
-        HyperswitchImpl.getInstance().registerCvcWidgetView(null);
+        HyperswitchImpl.getInstance().registerCVCWidgetView(null);
 
         if (scrollListener != null) {
             WebView webView = getBridge().getWebView();

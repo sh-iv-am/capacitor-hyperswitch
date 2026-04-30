@@ -59,7 +59,7 @@ public class HyperswitchImpl {
     private HyperswitchBoundElement paymentElementBound;
     private HyperswitchBoundElement cvcWidgetBound;
 
-    // SDK view references (set by PaymentElementPlugin / CvcWidgetPlugin)
+    // SDK view references (set by PaymentElementPlugin / CVCWidgetPlugin)
     private PaymentElement paymentElementView;
     private CVCWidget cvcWidgetView;
 
@@ -140,13 +140,13 @@ public class HyperswitchImpl {
         );
     }
 
-    // ── View Registration (called by PaymentElementPlugin / CvcWidgetPlugin) ─────────────────
+    // ── View Registration (called by PaymentElementPlugin / CVCWidgetPlugin) ─────────────────
 
     public void registerPaymentElementView(PaymentElement view) {
         this.paymentElementView = view;
     }
 
-    public void registerCvcWidgetView(CVCWidget view) {
+    public void registerCVCWidgetView(CVCWidget view) {
         this.cvcWidgetView = view;
     }
 
