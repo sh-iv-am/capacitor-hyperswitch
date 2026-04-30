@@ -103,7 +103,7 @@ public class HyperswitchImpl {
                 }
                 container.attach(
                     paymentSession: paymentSession,
-                    configuration: ["merchantDisplayName": "ggggg"]
+                    configuration: createOptions ?? ["merchantDisplayName": "our"]
                 )
                 print("[Hyperswitch] PaymentElement created and placed successfully")
 
