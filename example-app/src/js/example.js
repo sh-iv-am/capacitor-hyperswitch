@@ -192,7 +192,7 @@ window.mountCvcWidget = () => {
           scale: 1.0
         }
       },
-      placeholder: 'CVC'
+      placeholder: 'cvc123'
     }
   });
   
@@ -200,7 +200,7 @@ window.mountCvcWidget = () => {
   
   // Add event listener to show it's working
   cvcWidget.on('change', (event) => {
-    console.log('CVC Widget event:', event.toString());
+    console.log('CVC Widget event:', JSON.Stringify(event));
   });
   
   out('savedMethodsOutput', 'CVC Widget mounted with configuration');
@@ -371,7 +371,7 @@ window.updateIntent = async () => {
       const res = await fetch(`${SERVER_URL}/update-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentId: fetchedData.paymentId, currency: 'HKD', amount: 2999 }),
+        body: JSON.stringify({ payment_id: fetchedData.paymentId, currency: 'HKD', amount: 2999 }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return (await res.json()).sdkAuthorization;

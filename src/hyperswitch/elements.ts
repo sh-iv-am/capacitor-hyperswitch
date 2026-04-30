@@ -181,9 +181,13 @@ export function createCvcWidget(
       
       // Create the native view first, then bind it via createElement
       cvcWidgetPlugin.create({ ...getContentPosition(el) });
+      const cvcCreateOptions = { ...(mergedOptions as unknown as Record<string, unknown>) };
+      if (typeof cvcCreateOptions.placeholder === 'string') {
+        cvcCreateOptions.placeholder = { cvv: cvcCreateOptions.placeholder };
+      }
       plugin.createElement({ 
         type: 'cvcWidget', 
-        createOptions: mergedOptions as unknown as JSONValue 
+        createOptions: cvcCreateOptions as unknown as JSONValue 
       });
       resizeObserver = new ResizeObserver(() => syncNativeView());
       resizeObserver.observe(el);

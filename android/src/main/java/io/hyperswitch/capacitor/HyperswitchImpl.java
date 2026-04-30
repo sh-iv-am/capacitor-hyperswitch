@@ -1,8 +1,6 @@
 package io.hyperswitch.capacitor;
 
 import androidx.appcompat.app.AppCompatActivity;
-import android.content.res.ColorStateList;
-import android.graphics.Color;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Logger;
 
@@ -25,9 +23,7 @@ import io.hyperswitch.model.HyperswitchConfiguration;
 import io.hyperswitch.model.HyperswitchEnvironment;
 import io.hyperswitch.model.PaymentSessionConfiguration;
 import io.hyperswitch.paymentsession.PaymentSessionHandler;
-import io.hyperswitch.paymentsheet.AddressDetails;
 import io.hyperswitch.paymentsheet.PaymentResult;
-import io.hyperswitch.paymentsheet.PaymentSheet;
 import io.hyperswitch.sdk.Elements;
 import io.hyperswitch.sdk.Hyperswitch;
 import io.hyperswitch.view.CVCWidget;
@@ -220,8 +216,10 @@ public class HyperswitchImpl {
                     Logger.error("Hyperswitch", new Throwable("PaymentElementView not registered yet"));
                     return;
                 }
-                // Build PaymentElement configuration Map from createOptions
-                Map<String, Object> configMap = buildPaymentElementConfiguration(createOptions);
+                Map<String, Object> configMap = convertJsObjectToMap(createOptions);
+                if (!configMap.containsKey("merchantDisplayName")) {
+                    configMap.put("merchantDisplayName", "Merchant");
+                }
                 paymentElementBound = elements.bind(
                         paymentElementView,
                         configMap,
@@ -253,10 +251,7 @@ public class HyperswitchImpl {
                     Logger.error("Hyperswitch", new Throwable("CvcWidgetView not registered yet"));
                     return;
                 }
-                // Build CVC widget configuration Map from createOptions
-                // Pass directly to elements.bind() - SDK should handle conversion
-                Map<String, Object> configMap = buildCvcWidgetMap(createOptions);
-                // Mirrors: elements.bind(cvcWidget, configMap) { on(CvcWidgetEvents.CvcStatus) { println(it) } }
+                Map<String, Object> configMap = convertJsObjectToMap(createOptions);
                 cvcWidgetBound = elements.bind(
                         cvcWidgetView,
                         configMap,
@@ -371,8 +366,20 @@ public class HyperswitchImpl {
             return;
         }
 
-        PaymentSheet.Configuration configuration = buildPaymentSheetConfigurationObject(sheetOptions);
-        paymentSession.presentPaymentSheet(configuration, null, paymentResult -> {
+        Map<String, Object> configMap = new HashMap<>();
+        configMap.put("sdkAuthorization", paymentSession.getSdkAuthorization());
+        configMap.put("publishableKey", paymentSession.getPublishableKey());
+        configMap.put("from", "rn");
+        configMap.put("type", "payment");
+
+        if (sheetOptions != null) {
+            Map<String, Object> configurationMap = convertJsObjectToMap(sheetOptions);
+            if (!configurationMap.isEmpty()) {
+                configMap.put("configuration", configurationMap);
+            }
+        }
+
+        paymentSession.presentPaymentSheet(configMap, null, paymentResult -> {
             try {
                 JSObject jsResult = new JSObject();
                 if (paymentResult instanceof PaymentResult.Completed) {
@@ -572,401 +579,6 @@ public class HyperswitchImpl {
         }
         return js;
     }
-
-    // ── CVC Widget Configuration Builder ─────────────────────────────────────────────────────────
-
-    /**
-     * Builds CVC widget configuration Map from JS createOptions.
-     * Simple passthrough - SDK should handle the Map properly.
-     */
-    private Map<String, Object> buildCvcWidgetMap(JSObject createOptions) {
-        Map<String, Object> config = new HashMap<>();
-
-        if (createOptions == null) {
-            config.put("subscribedEvents", new String[]{"CVC_STATUS"});
-            return config;
-        }
-
-        JSObject appearanceObj = createOptions.getJSObject("appearance");
-        if (appearanceObj != null) {
-            Map<String, Object> appearanceMap = convertJsObjectToMap(appearanceObj);
-            if (!appearanceMap.isEmpty()) {
-                config.put("appearance", appearanceMap);
-            }
-        }
-
-        String placeholder = createOptions.getString("placeholder");
-        if (placeholder != null && !placeholder.isEmpty()) {
-            Map<String, Object> placeholderMap = new HashMap<>();
-            placeholderMap.put("cvv", placeholder);
-            config.put("placeholder", placeholderMap);
-        }
-
-        String sdkAuth = createOptions.getString("sdkAuthorization");
-        if (sdkAuth != null && !sdkAuth.isEmpty()) {
-            config.put("sdkAuthorization", sdkAuth);
-        }
-
-        config.put("subscribedEvents", new String[]{"CVC_STATUS"});
-
-        return config;
-    }
-    
-    private PaymentSheet.Configuration buildPaymentSheetConfigurationObject(JSObject sheetOptions) {
-        String merchantDisplayName = "Merchant";
-        if (sheetOptions != null) {
-            String mdn = sheetOptions.getString("merchantDisplayName");
-            if (mdn != null && !mdn.isEmpty()) merchantDisplayName = mdn;
-        }
-
-        if (sheetOptions == null) {
-            return new PaymentSheet.Configuration(merchantDisplayName);
-        }
-
-        PaymentSheet.Appearance appearance = buildAppearance(sheetOptions.getJSObject("appearance"));
-        PaymentSheet.PlaceHolder placeHolder = buildPlaceHolder(sheetOptions.getJSObject("placeholder"));
-        PaymentSheet.CustomerConfiguration customer = buildCustomerConfiguration(sheetOptions.getJSObject("customer"));
-        AddressDetails shippingDetails = buildAddressDetails(sheetOptions.getJSObject("shippingDetails"));
-        PaymentSheet.BillingDetails billingDetails = buildBillingDetails(sheetOptions.getJSObject("defaultBillingDetails"));
-
-        String primaryButtonLabel = sheetOptions.getString("primaryButtonLabel");
-        String paymentSheetHeaderLabel = sheetOptions.getString("paymentSheetHeaderLabel");
-        String savedPaymentSheetHeaderLabel = sheetOptions.getString("savedPaymentSheetHeaderLabel");
-
-        boolean allowsDelayed = sheetOptions.has("allowsDelayedPaymentMethods")
-                && sheetOptions.optBoolean("allowsDelayedPaymentMethods", false);
-        boolean allowsShipping = sheetOptions.has("allowsPaymentMethodsRequiringShippingAddress")
-                && sheetOptions.optBoolean("allowsPaymentMethodsRequiringShippingAddress", false);
-
-        Boolean displaySavedPaymentMethods = sheetOptions.has("displaySavedPaymentMethods")
-                ? sheetOptions.optBoolean("displaySavedPaymentMethods", true) : null;
-        Boolean displaySavedPaymentMethodsCheckbox = sheetOptions.has("displaySavedPaymentMethodsCheckbox")
-                ? sheetOptions.optBoolean("displaySavedPaymentMethodsCheckbox", true) : null;
-        Boolean displayDefaultSavedPaymentIcon = sheetOptions.has("displayDefaultSavedPaymentIcon")
-                ? sheetOptions.optBoolean("displayDefaultSavedPaymentIcon", true) : null;
-        Boolean hideConfirmButton = sheetOptions.has("hideConfirmButton")
-                ? sheetOptions.optBoolean("hideConfirmButton", false) : null;
-        Boolean disableBranding = sheetOptions.has("disableBranding")
-                ? sheetOptions.optBoolean("disableBranding", false) : null;
-        Boolean defaultView = sheetOptions.has("defaultView")
-                ? sheetOptions.optBoolean("defaultView", false) : null;
-
-        ColorStateList primaryButtonColorCSL = null;
-        String primaryButtonColor = sheetOptions.getString("primaryButtonColor");
-        if (primaryButtonColor != null && !primaryButtonColor.isEmpty()) {
-            primaryButtonColorCSL = ColorStateList.valueOf(Color.parseColor(primaryButtonColor));
-        }
-
-        return new PaymentSheet.Configuration(
-                merchantDisplayName,
-                customer,
-                null,
-                primaryButtonColorCSL,
-                billingDetails,
-                shippingDetails,
-                allowsDelayed,
-                allowsShipping,
-                appearance,
-                primaryButtonLabel,
-                paymentSheetHeaderLabel,
-                savedPaymentSheetHeaderLabel,
-                displayDefaultSavedPaymentIcon,
-                displaySavedPaymentMethodsCheckbox,
-                displaySavedPaymentMethods,
-                placeHolder,
-                hideConfirmButton,
-                null,
-                disableBranding,
-                defaultView,
-                false,
-                null
-        );
-    }
-
-    private PaymentSheet.Appearance buildAppearance(JSObject appearanceObj) {
-        if (appearanceObj == null) return null;
-
-        PaymentSheet.Colors colorsLight = null;
-        PaymentSheet.Colors colorsDark = null;
-        JSObject colorsObj = appearanceObj.getJSObject("colors");
-        if (colorsObj != null) {
-            colorsLight = buildColors(colorsObj.getJSObject("light"));
-            colorsDark = buildColors(colorsObj.getJSObject("dark"));
-        }
-
-        PaymentSheet.Shapes shapes = buildShapes(appearanceObj.getJSObject("shapes"));
-        PaymentSheet.Typography typography = buildTypography(appearanceObj.getJSObject("font"));
-        PaymentSheet.PrimaryButton primaryButton = buildPrimaryButton(appearanceObj.getJSObject("primaryButton"));
-
-        PaymentSheet.Theme theme = null;
-        String themeStr = appearanceObj.getString("theme");
-        if (themeStr != null && !themeStr.isEmpty()) {
-            try { theme = PaymentSheet.Theme.valueOf(themeStr); }
-            catch (IllegalArgumentException ignored) {}
-        }
-
-        String locale = appearanceObj.getString("locale");
-
-        return new PaymentSheet.Appearance(colorsLight, colorsDark, shapes, typography, primaryButton, locale, theme);
-    }
-
-    private PaymentSheet.Colors buildColors(JSObject colorsObj) {
-        if (colorsObj == null) return null;
-
-        return new PaymentSheet.Colors(
-                parseOptionalColor(colorsObj.getString("primary")),
-                parseOptionalColor(colorsObj.getString("background")),
-                parseOptionalColor(colorsObj.getString("componentBackground")),
-                parseOptionalColor(colorsObj.getString("componentBorder")),
-                parseOptionalColor(colorsObj.getString("componentDivider")),
-                parseOptionalColor(colorsObj.getString("componentText")),
-                parseOptionalColor(colorsObj.getString("primaryText")),
-                parseOptionalColor(colorsObj.getString("secondaryText")),
-                parseOptionalColor(colorsObj.getString("placeholderText")),
-                parseOptionalColor(colorsObj.getString("icon")),
-                parseOptionalColor(colorsObj.getString("error")),
-                parseOptionalColor(colorsObj.getString("loaderBackground")),
-                parseOptionalColor(colorsObj.getString("loaderForeground"))
-        );
-    }
-
-    private Integer parseOptionalColor(String hexColor) {
-        if (hexColor == null || hexColor.isEmpty()) return null;
-        try { return Color.parseColor(hexColor); }
-        catch (IllegalArgumentException e) { return null; }
-    }
-
-    private PaymentSheet.Shapes buildShapes(JSObject shapesObj) {
-        if (shapesObj == null) return null;
-
-        Float cornerRadiusDp = shapesObj.has("borderRadius")
-                ? (float) shapesObj.optDouble("borderRadius", 0) : null;
-        Float borderStrokeWidthDp = shapesObj.has("borderWidth")
-                ? (float) shapesObj.optDouble("borderWidth", 0) : null;
-        PaymentSheet.Shadow shadow = buildShadow(shapesObj.getJSObject("shadow"));
-
-        return new PaymentSheet.Shapes(cornerRadiusDp, borderStrokeWidthDp, shadow);
-    }
-
-    private PaymentSheet.Shadow buildShadow(JSObject shadowObj) {
-        if (shadowObj == null) return null;
-        Integer color = parseOptionalColor(shadowObj.getString("color"));
-        Float intensity = shadowObj.has("intensity")
-                ? (float) shadowObj.optDouble("intensity", 0) : null;
-        return new PaymentSheet.Shadow(color, intensity);
-    }
-
-    private PaymentSheet.Typography buildTypography(JSObject fontObj) {
-        if (fontObj == null) return null;
-        Float sizeScaleFactor = fontObj.has("scale")
-                ? (float) fontObj.optDouble("scale", 1.0) : null;
-        String fontFamily = fontObj.getString("family");
-        return new PaymentSheet.Typography(sizeScaleFactor, null, fontFamily);
-    }
-
-    private PaymentSheet.PrimaryButton buildPrimaryButton(JSObject pbObj) {
-        if (pbObj == null) return null;
-        PaymentSheet.PrimaryButtonColors colorsLight = buildPrimaryButtonColors(pbObj.getJSObject("colorsLight"));
-        PaymentSheet.PrimaryButtonColors colorsDark = buildPrimaryButtonColors(pbObj.getJSObject("colorsDark"));
-        PaymentSheet.PrimaryButtonShape shape = buildPrimaryButtonShape(pbObj.getJSObject("shape"));
-        return new PaymentSheet.PrimaryButton(colorsLight, colorsDark, shape, null);
-    }
-
-    private PaymentSheet.PrimaryButtonColors buildPrimaryButtonColors(JSObject pbcObj) {
-        if (pbcObj == null) return null;
-        return new PaymentSheet.PrimaryButtonColors(
-                parseOptionalColor(pbcObj.getString("background")),
-                parseOptionalColor(pbcObj.getString("onBackground")),
-                parseOptionalColor(pbcObj.getString("border"))
-        );
-    }
-
-    private PaymentSheet.PrimaryButtonShape buildPrimaryButtonShape(JSObject pbsObj) {
-        if (pbsObj == null) return null;
-        Float cornerRadiusDp = pbsObj.has("cornerRadius")
-                ? (float) pbsObj.optDouble("cornerRadius", 0) : null;
-        Float borderStrokeWidthDp = pbsObj.has("borderWidth")
-                ? (float) pbsObj.optDouble("borderWidth", 0) : null;
-        PaymentSheet.Shadow shadow = buildShadow(pbsObj.getJSObject("shadow"));
-        return new PaymentSheet.PrimaryButtonShape(cornerRadiusDp, borderStrokeWidthDp, shadow);
-    }
-
-    private PaymentSheet.PlaceHolder buildPlaceHolder(JSObject phObj) {
-        if (phObj == null) return null;
-        return new PaymentSheet.PlaceHolder(
-                phObj.getString("cardNumber"),
-                phObj.getString("expiryDate"),
-                phObj.getString("cvv")
-        );
-    }
-
-    private PaymentSheet.CustomerConfiguration buildCustomerConfiguration(JSObject custObj) {
-        if (custObj == null) return null;
-        return new PaymentSheet.CustomerConfiguration(
-                custObj.getString("id"),
-                custObj.getString("ephemeralKeySecret")
-        );
-    }
-
-    private PaymentSheet.BillingDetails buildBillingDetails(JSObject bdObj) {
-        if (bdObj == null) return null;
-        return new PaymentSheet.BillingDetails(
-                buildAddress(bdObj.getJSObject("address")),
-                bdObj.getString("email"),
-                bdObj.getString("name"),
-                extractPhoneNumber(bdObj.getJSObject("phone"))
-        );
-    }
-
-    private AddressDetails buildAddressDetails(JSObject sdObj) {
-        if (sdObj == null) return null;
-        return new AddressDetails(
-                sdObj.getString("name"),
-                buildAddress(sdObj.getJSObject("address")),
-                extractPhoneNumber(sdObj.getJSObject("phone")),
-                null
-        );
-    }
-
-    private PaymentSheet.Address buildAddress(JSObject addrObj) {
-        if (addrObj == null) return null;
-        return new PaymentSheet.Address(
-                addrObj.getString("city"),
-                addrObj.getString("country"),
-                addrObj.getString("line1"),
-                addrObj.getString("line2"),
-                addrObj.getString("zip"),
-                addrObj.getString("state")
-        );
-    }
-
-    private String extractPhoneNumber(JSObject phoneObj) {
-        if (phoneObj == null) return null;
-        return phoneObj.getString("number");
-    }
-    
-    /**
-     * Builds PaymentElement configuration Map from JS createOptions.
-     * Similar to PaymentSheetOptions but for Elements API.
-     */
-    private Map<String, Object> buildPaymentElementConfiguration(JSObject createOptions) {
-        Map<String, Object> config = new HashMap<>();
-
-        if (createOptions == null) return config;
-
-        JSObject appearanceObj = createOptions.getJSObject("appearance");
-        if (appearanceObj != null) {
-            Map<String, Object> appearanceMap = convertJsObjectToMap(appearanceObj);
-            if (!appearanceMap.isEmpty()) {
-                config.put("appearance", appearanceMap);
-            }
-        }
-
-        JSObject placeholderObj = createOptions.getJSObject("placeholder");
-        if (placeholderObj != null) {
-            Map<String, Object> placeholderMap = convertJsObjectToMap(placeholderObj);
-            if (!placeholderMap.isEmpty()) {
-                config.put("placeholder", placeholderMap);
-            }
-        }
-
-        JSObject customerObj = createOptions.getJSObject("customer");
-        if (customerObj != null) {
-            Map<String, Object> customerMap = convertJsObjectToMap(customerObj);
-            if (!customerMap.isEmpty()) {
-                config.put("customer", customerMap);
-            }
-        }
-
-        JSObject shippingObj = createOptions.getJSObject("shippingDetails");
-        if (shippingObj != null) {
-            Map<String, Object> shippingMap = convertJsObjectToMap(shippingObj);
-            if (!shippingMap.isEmpty()) {
-                config.put("shippingDetails", shippingMap);
-            }
-        }
-
-        JSObject billingObj = createOptions.getJSObject("defaultBillingDetails");
-        if (billingObj != null) {
-            Map<String, Object> billingMap = convertJsObjectToMap(billingObj);
-            if (!billingMap.isEmpty()) {
-                config.put("defaultBillingDetails", billingMap);
-            }
-        }
-
-        String merchantDisplayName = createOptions.getString("merchantDisplayName");
-        if (merchantDisplayName != null && !merchantDisplayName.isEmpty()) {
-            config.put("merchantDisplayName", merchantDisplayName);
-        } else {
-            config.put("merchantDisplayName", "Merchant");
-        }
-
-        String primaryButtonLabel = createOptions.getString("primaryButtonLabel");
-        if (primaryButtonLabel != null && !primaryButtonLabel.isEmpty()) {
-            config.put("primaryButtonLabel", primaryButtonLabel);
-        }
-
-        String primaryButtonColor = createOptions.getString("primaryButtonColor");
-        if (primaryButtonColor != null) {
-            config.put("primaryButtonColor", primaryButtonColor);
-        }
-
-        String paymentSheetHeaderLabel = createOptions.getString("paymentSheetHeaderLabel");
-        if (paymentSheetHeaderLabel != null && !paymentSheetHeaderLabel.isEmpty()) {
-            config.put("paymentSheetHeaderLabel", paymentSheetHeaderLabel);
-        }
-
-        String savedPaymentSheetHeaderLabel = createOptions.getString("savedPaymentSheetHeaderLabel");
-        if (savedPaymentSheetHeaderLabel != null && !savedPaymentSheetHeaderLabel.isEmpty()) {
-            config.put("savedPaymentSheetHeaderLabel", savedPaymentSheetHeaderLabel);
-        }
-
-        if (createOptions.has("allowsDelayedPaymentMethods")) {
-            config.put("allowsDelayedPaymentMethods", createOptions.optBoolean("allowsDelayedPaymentMethods", false));
-        }
-
-        if (createOptions.has("allowsPaymentMethodsRequiringShippingAddress")) {
-            config.put("allowsPaymentMethodsRequiringShippingAddress", createOptions.optBoolean("allowsPaymentMethodsRequiringShippingAddress", false));
-        }
-
-        if (createOptions.has("displaySavedPaymentMethods")) {
-            config.put("displaySavedPaymentMethods", createOptions.optBoolean("displaySavedPaymentMethods", true));
-        }
-
-        if (createOptions.has("displaySavedPaymentMethodsCheckbox")) {
-            config.put("displaySavedPaymentMethodsCheckbox", createOptions.optBoolean("displaySavedPaymentMethodsCheckbox", true));
-        }
-
-        if (createOptions.has("displayDefaultSavedPaymentIcon")) {
-            config.put("displayDefaultSavedPaymentIcon", createOptions.optBoolean("displayDefaultSavedPaymentIcon", true));
-        }
-
-        if (createOptions.has("disableBranding")) {
-            config.put("disableBranding", createOptions.optBoolean("disableBranding", false));
-        }
-
-        if (createOptions.has("defaultView")) {
-            config.put("defaultView", createOptions.optBoolean("defaultView", false));
-        }
-
-        if (createOptions.has("enablePartialLoading")) {
-            config.put("enablePartialLoading", createOptions.optBoolean("enablePartialLoading", false));
-        }
-
-        if (createOptions.has("hideConfirmButton")) {
-            config.put("hideConfirmButton", createOptions.optBoolean("hideConfirmButton", false));
-        }
-
-        config.put("subscribedEvents", new String[]{
-            "FORM_STATUS",
-            "PAYMENT_METHOD_STATUS",
-            "PAYMENT_METHOD_INFO_CARD",
-            "PAYMENT_METHOD_INFO_BILLING_ADDRESS"
-        });
-
-        return config;
-    }
-    
     private Map<String, Object> convertJsObjectToMap(JSObject obj) {
         return convertJsObjectToMapInternal(obj, false);
     }
