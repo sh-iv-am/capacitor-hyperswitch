@@ -69,7 +69,74 @@ window.presentSheet = async () => {
   if (!flow1Session) { out('sheetOutput', 'Call initPaymentSession first.'); return; }
   out('sheetOutput', 'Presenting…');
   try {
-    const result = await flow1Session.presentPaymentSheet();
+    const result = await flow1Session.presentPaymentSheet({
+      appearance: {
+        colors: {
+          light: {
+            primary: '#D32F2F',
+            surface: '#FAFAFA',
+            background: '#FAFAFA',
+            componentBackground: '#FFFFFF',
+            componentBorder: '#E0E0E0',
+            componentDivider: '#EEEEEE',
+            componentText: '#212121',
+            primaryText: '#212121',
+            secondaryText: '#757575',
+            placeholderText: '#BDBDBD',
+            icon: '#757575',
+            error: '#D32F2F',
+            loaderBackground: '#FFEBEE',
+            loaderForeground: '#D32F2F'
+          },
+          dark: {
+            primary: '#EF5350',
+            surface: '#1E1E1E',
+            background: '#121212',
+            componentBackground: '#2C2C2C',
+            componentBorder: '#424242',
+            componentDivider: '#333333',
+            componentText: '#EEEEEE',
+            primaryText: '#EEEEEE',
+            secondaryText: '#BDBDBD',
+            placeholderText: '#757575',
+            icon: '#BDBDBD',
+            error: '#EF5350',
+            loaderBackground: '#3E2723',
+            loaderForeground: '#EF5350'
+          }
+        },
+        shapes: {
+          borderRadius: 12,
+          borderWidth: 1
+        },
+        font: {
+          scale: 1.0
+        },
+        primaryButton: {
+          colorsLight: {
+            background: '#D32F2F',
+            onBackground: '#FFFFFF',
+            border: '#D32F2F'
+          },
+          colorsDark: {
+            background: '#EF5350',
+            onBackground: '#FFFFFF',
+            border: '#EF5350'
+          },
+          shape: {
+            cornerRadius: 12
+          }
+        },
+        theme: 'Default'
+      },
+      primaryButtonLabel: 'Pay Now',
+      merchantDisplayName: 'Hyperswitch Store',
+      placeholder: {
+        cardNumber: '4242 4242 4242 4242',
+        expiryDate: 'MM / YY',
+        cvv: 'CVC'
+      }
+    });
     out('sheetOutput', resultText(result));
   } catch (err) {
     out('sheetOutput', 'Error: ' + err.message);
@@ -92,8 +159,51 @@ window.getCustomerSavedPaymentMethods = async () => {
 window.mountCvcWidget = () => {
   if (!flow1Session) { out('savedMethodsOutput', 'Call initPaymentSession first.'); return; }
   if (!elementsSession) { out('savedMethodsOutput', 'CvcWidget requires Elements session — call elements() first (Flow 2).'); return; }
-  cvcWidget = elementsSession.create({ type: 'cvcWidget' });
+  
+  // Create CVC widget WITH configuration options
+  cvcWidget = elementsSession.create({ 
+    type: 'cvcWidget',
+
+    options: {
+      appearance: {
+        colors: {
+          light: {
+            primary: '#D32F2F',
+            componentBackground: '#FFFFFF',
+            componentBorder: '#E0E0E0',
+            componentText: '#212121',
+            placeholderText: '#BDBDBD',
+            error: '#D32F2F'
+          },
+          dark: {
+            primary: '#EF5350',
+            componentBackground: '#2C2C2C',
+            componentBorder: '#424242',
+            componentText: '#EEEEEE',
+            placeholderText: '#757575',
+            error: '#EF5350'
+          }
+        },
+        shapes: {
+          borderRadius: 12,
+          borderWidth: 1
+        },
+        font: {
+          scale: 1.0
+        }
+      },
+      placeholder: 'cvc123'
+    }
+  });
+  
   cvcWidget.mount('#cvc-widget');
+  
+  // Add event listener to show it's working
+  cvcWidget.on('change', (event) => {
+    console.log('CVC Widget event:', JSON.stringify(event));
+  });
+  
+  out('savedMethodsOutput', 'CVC Widget mounted with configuration');
 };
 
 window.unmountCvcWidget = () => {
@@ -159,8 +269,87 @@ window.initElements = async () => {
 
 window.mountPaymentElement = () => {
   if (!elementsSession) { out('confirmOutput', 'Call elements() first.'); return; }
-  paymentElement = elementsSession.create({ type: 'paymentElement' });
+  
+  // Create PaymentElement with ALL RED configuration
+  paymentElement = elementsSession.create({
+    type: 'paymentElement',
+    options: {
+      merchantDisplayName: 'Hyperswitch Store',
+      subscribedEvents: ['FORM_STATUS'],
+      appearance: {
+        colors: {
+          light: {
+            primary: '#D32F2F',
+            surface: '#FAFAFA',
+            background: '#FAFAFA',
+            componentBackground: '#FFFFFF',
+            componentBorder: '#E0E0E0',
+            componentDivider: '#EEEEEE',
+            componentText: '#212121',
+            primaryText: '#212121',
+            secondaryText: '#757575',
+            placeholderText: '#BDBDBD',
+            icon: '#757575',
+            error: '#D32F2F',
+            loaderBackground: '#FFEBEE',
+            loaderForeground: '#D32F2F'
+          },
+          dark: {
+            primary: '#EF5350',
+            surface: '#1E1E1E',
+            background: '#121212',
+            componentBackground: '#2C2C2C',
+            componentBorder: '#424242',
+            componentDivider: '#333333',
+            componentText: '#EEEEEE',
+            primaryText: '#EEEEEE',
+            secondaryText: '#BDBDBD',
+            placeholderText: '#757575',
+            icon: '#BDBDBD',
+            error: '#EF5350',
+            loaderBackground: '#3E2723',
+            loaderForeground: '#EF5350'
+          }
+        },
+        shapes: {
+          borderRadius: 12,
+          borderWidth: 1
+        },
+        font: {
+          scale: 1.0
+        },
+        primaryButton: {
+          colorsLight: {
+            background: '#D32F2F',
+            onBackground: '#FFFFFF',
+            border: '#D32F2F'
+          },
+          colorsDark: {
+            background: '#EF5350',
+            onBackground: '#FFFFFF',
+            border: '#EF5350'
+          },
+          shape: {
+            cornerRadius: 12
+          }
+        },
+        theme: 'Default'
+      },
+      placeholder: {
+        cardNumber: '4242 4242 4242 4242',
+        expiryDate: 'MM / YY',
+        cvv: 'CVC'
+      }
+    }
+  });
+  
   paymentElement.mount('#payment-element');
+  
+  paymentElement.on('FORM_STATUS', (event) => console.log('eventt:', JSON.stringify(event)));
+  paymentElement.on('PAYMENT_METHOD_STATUS', (event) => console.log('eventt2:', JSON.stringify(event)));
+  paymentElement.on('PAYMENT_METHOD_INFO_CARD', (event) => console.log('eventt3:', JSON.stringify(event)));
+  
+  out('confirmOutput', 'PaymentElement mounted with ALL RED configuration');
 };
 
 window.unmountPaymentElement = () => {
@@ -188,7 +377,7 @@ window.updateIntent = async () => {
       const res = await fetch(`${SERVER_URL}/update-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paymentId: fetchedData.paymentId, currency: 'HKD', amount: 2999 }),
+        body: JSON.stringify({ payment_id: fetchedData.paymentId, currency: 'HKD', amount: 2999 }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return (await res.json()).sdkAuthorization;
