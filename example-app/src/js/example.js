@@ -200,7 +200,7 @@ window.mountCvcWidget = () => {
   
   // Add event listener to show it's working
   cvcWidget.on('change', (event) => {
-    console.log('CVC Widget event:', JSON.Stringify(event));
+    console.log('CVC Widget event:', JSON.stringify(event));
   });
   
   out('savedMethodsOutput', 'CVC Widget mounted with configuration');
@@ -275,6 +275,7 @@ window.mountPaymentElement = () => {
     type: 'paymentElement',
     options: {
       merchantDisplayName: 'Hyperswitch Store',
+      subscribedEvents: ['FORM_STATUS'],
       appearance: {
         colors: {
           light: {
@@ -343,6 +344,11 @@ window.mountPaymentElement = () => {
   });
   
   paymentElement.mount('#payment-element');
+  
+  paymentElement.on('FORM_STATUS', (event) => console.log('eventt:', JSON.stringify(event)));
+  paymentElement.on('PAYMENT_METHOD_STATUS', (event) => console.log('eventt2:', JSON.stringify(event)));
+  paymentElement.on('PAYMENT_METHOD_INFO_CARD', (event) => console.log('eventt3:', JSON.stringify(event)));
+  
   out('confirmOutput', 'PaymentElement mounted with ALL RED configuration');
 };
 

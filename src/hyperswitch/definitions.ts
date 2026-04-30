@@ -307,11 +307,6 @@ export interface Elements {
 
 export interface InitPaymentSession {
   presentPaymentSheet(options?: JSONValue): Promise<PaymentResult>;
-
-  /**
-   * Fetches saved payment methods and returns a PaymentSessionHandler
-   * wrapper whose methods operate on that specific handler instance.
-   */
   getCustomerSavedPaymentMethods(): Promise<PaymentSessionHandler>;
 }
 
@@ -367,8 +362,14 @@ export interface HyperswitchPlugin {
    * Use `element.on(eventType, handler)` in the JS wrapper layer instead of
    * calling this directly.
    */
+
   addListener(
-    event: 'paymentEvent',
+    event: 'paymentElementEvent',
+    handler: (data: PaymentEventData) => void,
+  ): Promise<{ remove: () => Promise<void> }>;
+
+  addListener(
+    event: 'cvcWidgetEvent',
     handler: (data: PaymentEventData) => void,
   ): Promise<{ remove: () => Promise<void> }>;
 }

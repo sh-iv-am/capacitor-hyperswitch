@@ -82,8 +82,8 @@ export function createPaymentElement(plugin: HyperswitchPlugin, options?: Paymen
     on(event: string, handler?: (data?: PaymentEventData) => void): void {
       if (!handler) return;
       // Subscribe persistently via Capacitor's addListener.
-      // Native side fires "paymentEvent" for all widget events; we filter by type here.
-      plugin.addListener('paymentEvent', (eventData: PaymentEventData) => {
+      // Native side fires "paymentElementEvent" for all widget events; we filter by type here.
+      plugin.addListener('paymentElementEvent', (eventData: PaymentEventData) => {
         if (eventData.type === event) {
           handler(eventData);
         }
@@ -157,7 +157,7 @@ export function createCvcWidget(
   }
 
   // Set up event listener for CVC widget events
-  plugin.addListener('paymentEvent', (eventData: PaymentEventData) => {
+  plugin.addListener('cvcWidgetEvent', (eventData: PaymentEventData) => {
     if (eventData.type === 'CVC_STATUS') {
       const handlers = eventHandlers.get('change');
       handlers?.forEach(handler => handler(eventData));

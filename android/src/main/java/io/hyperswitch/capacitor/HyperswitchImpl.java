@@ -5,12 +5,13 @@ import com.getcapacitor.JSObject;
 import com.getcapacitor.Logger;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import io.hyperswitch.CvcWidgetEvents;
-import io.hyperswitch.PaymentEventSubscriptionBuilder;
 import io.hyperswitch.PaymentEvents;
 import io.hyperswitch.model.CustomEndpointConfiguration;
 import io.hyperswitch.model.ElementsUpdateResult;
@@ -23,7 +24,6 @@ import io.hyperswitch.sdk.Elements;
 import io.hyperswitch.sdk.Hyperswitch;
 import io.hyperswitch.utils.ConversionUtils;
 import io.hyperswitch.view.CVCWidget;
-import io.hyperswitch.view.HyperswitchElement;
 import io.hyperswitch.view.PaymentElement;
 import io.hyperswitch.sdk.HyperswitchBoundElement;
 import io.hyperswitch.sdk.HyperswitchInstance;
@@ -103,7 +103,7 @@ public class HyperswitchImpl {
 
     /** Called when a payment widget emits a native event (e.g. CVC_STATUS, FORM_STATUS). */
     public interface NativeEventListener {
-        void onEvent(String type, Map<String, Object> payload);
+        void onEvent(String type, Map<String, Object> payload, String source);
     }
 
     // ── Init ───────────────────────────────────────────────────────────────────────────────────
@@ -213,27 +213,35 @@ public class HyperswitchImpl {
                     return;
                 }
                 Map<String, Object> configMap = jsObjectToMap(createOptions);
+                List<String> subscribedEventsList = extractAndRemoveSubscribedEvents(configMap);
                 paymentElementBound = elements.bind(
                         paymentElementView,
                         configMap,
                         builder -> {
-                            // Subscribe to PaymentElement events
-                            builder.on(PaymentEvents.FormStatus.INSTANCE, event -> {
-                                fireEvent("FORM_STATUS", event.getPayload());
-                                return Unit.INSTANCE;
-                            });
-                            builder.on(PaymentEvents.PaymentMethodStatus.INSTANCE, event -> {
-                                fireEvent("PAYMENT_METHOD_STATUS", event.getPayload());
-                                return Unit.INSTANCE;
-                            });
-                            builder.on(PaymentEvents.PaymentMethodInfoCard.INSTANCE, event -> {
-                                fireEvent("PAYMENT_METHOD_INFO_CARD", event.getPayload());
-                                return Unit.INSTANCE;
-                            });
-                            builder.on(PaymentEvents.PaymentMethodInfoBillingAddress.INSTANCE, event -> {
-                                fireEvent("PAYMENT_METHOD_INFO_BILLING_ADDRESS", event.getPayload());
-                                return Unit.INSTANCE;
-                            });
+                            if (subscribedEventsList.contains("FORM_STATUS")) {
+                                builder.on(PaymentEvents.FormStatus.INSTANCE, event -> {
+                                    fireEvent("FORM_STATUS", event.getPayload(), "paymentElement");
+                                    return Unit.INSTANCE;
+                                });
+                            }
+                            if (subscribedEventsList.contains("PAYMENT_METHOD_STATUS")) {
+                                builder.on(PaymentEvents.PaymentMethodStatus.INSTANCE, event -> {
+                                    fireEvent("PAYMENT_METHOD_STATUS", event.getPayload(), "paymentElement");
+                                    return Unit.INSTANCE;
+                                });
+                            }
+                            if (subscribedEventsList.contains("PAYMENT_METHOD_INFO_CARD")) {
+                                builder.on(PaymentEvents.PaymentMethodInfoCard.INSTANCE, event -> {
+                                    fireEvent("PAYMENT_METHOD_INFO_CARD", event.getPayload(), "paymentElement");
+                                    return Unit.INSTANCE;
+                                });
+                            }
+                            if (subscribedEventsList.contains("PAYMENT_METHOD_INFO_BILLING_ADDRESS")) {
+                                builder.on(PaymentEvents.PaymentMethodInfoBillingAddress.INSTANCE, event -> {
+                                    fireEvent("PAYMENT_METHOD_INFO_BILLING_ADDRESS", event.getPayload(), "paymentElement");
+                                    return Unit.INSTANCE;
+                                });
+                            }
                             return Unit.INSTANCE;
                         }
                 );
@@ -250,7 +258,7 @@ public class HyperswitchImpl {
                         configMap,
                         builder -> {
                             builder.on(CvcWidgetEvents.CvcStatus.INSTANCE, event -> {
-                                fireEvent("CVC_STATUS", event.getPayload());
+                                fireEvent("CVC_STATUS", event.getPayload(), "cvcWidget");
                                 return Unit.INSTANCE;
                             });
                             return Unit.INSTANCE;
@@ -262,9 +270,9 @@ public class HyperswitchImpl {
     }
 
     /** Forwards a native widget event to JS via the registered NativeEventListener. */
-    private void fireEvent(String type, Map<String, Object> payload) {
+    private void fireEvent(String type, Map<String, Object> payload, String source) {
         if (eventListener != null) {
-            eventListener.onEvent(type, payload != null ? payload : new HashMap<>());
+            eventListener.onEvent(type, payload != null ? payload : new HashMap<>(), source);
         }
     }
 
@@ -367,6 +375,7 @@ public class HyperswitchImpl {
 
         if (sheetOptions != null) {
             Map<String, Object> configurationMap = jsObjectToMap(sheetOptions);
+            configurationMap.remove("subscribedEvents");
             if (!configurationMap.isEmpty()) {
                 configMap.put("configuration", configurationMap);
             }
@@ -580,5 +589,16 @@ public class HyperswitchImpl {
             Logger.error("Hyperswitch", "Error converting JSObject to Map", e);
             return new HashMap<>();
         }
+    }
+
+    private List<String> extractAndRemoveSubscribedEvents(Map<String, Object> map) {
+        List<String> result = new ArrayList<>();
+        Object raw = map.remove("subscribedEvents");
+        if (raw instanceof List<?>) {
+            for (Object item : (List<?>) raw) {
+                if (item instanceof String) result.add((String) item);
+            }
+        }
+        return result;
     }
 }

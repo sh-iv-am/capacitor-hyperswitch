@@ -20,7 +20,7 @@ public class HyperswitchPlugin extends Plugin {
      */
     @Override
     public void load() {
-        implementation.setEventListener((type, payload) -> {
+        implementation.setEventListener((type, payload, source) -> {
             JSObject data = new JSObject();
             data.put("type", type);
             JSObject payloadJs = new JSObject();
@@ -31,7 +31,12 @@ public class HyperswitchPlugin extends Plugin {
                 }
             }
             data.put("payload", payloadJs);
-            notifyListeners("paymentEvent", data);
+            String channel = switch (source) {
+                case "paymentElement" -> "paymentElementEvent";
+                case "cvcWidget" -> "cvcWidgetEvent";
+                default -> "paymentEvent";
+            };
+            notifyListeners(channel, data);
         });
     }
 

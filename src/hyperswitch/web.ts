@@ -234,7 +234,7 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
   // addListener is provided by WebPlugin base class; this override satisfies the
   // HyperswitchPlugin interface typing for the 'paymentEvent' event.
   addListener(
-    event: 'paymentEvent',
+    event: 'paymentElementEvent' | 'cvcWidgetEvent',
     handler: (data: import('./definitions').PaymentEventData) => void,
   ): Promise<{ remove: () => Promise<void> }> {
     return super.addListener(event, handler);
