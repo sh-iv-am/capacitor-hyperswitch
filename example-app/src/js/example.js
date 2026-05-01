@@ -1,5 +1,5 @@
 import { Capacitor } from '@capacitor/core';
-import { Hyperswitch } from 'capacitor-hyperswitch';
+import { Hyperswitch } from '@juspay-tech/capacitor-hyperswitch';
 
 const SERVER_URL =
   Capacitor.getPlatform() === 'android'

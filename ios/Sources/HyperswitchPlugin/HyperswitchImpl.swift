@@ -52,8 +52,8 @@ public class HyperswitchImpl {
         self.paymentSession = PaymentSession(
             publishableKey: publishableKey,
             profileId: profileId ?? "",
-            customBackendUrl: customConfig?["overrideCustomBackendEndpoint"] as? String ?? nil,
-            customLogUrl: customConfig?["overrideCustomLoggingEndpoint"] as? String ?? nil
+            customBackendUrl: customConfig?["overrideCustomBackendEndpoint"] as? String ?? customConfig?["customEndpoint"] as? String ?? nil,
+            customLogUrl: customConfig?["overrideCustomLoggingEndpoint"] as? String ?? customConfig?["customEndpoint"] as? String ?? nil
         )
     }
 
@@ -103,7 +103,7 @@ public class HyperswitchImpl {
                 }
                 container.attach(
                     paymentSession: paymentSession,
-                    configuration: createOptions ?? ["merchantDisplayName": "our"]
+                    configuration: createOptions ?? [:]
                 )
                 print("[Hyperswitch] PaymentElement created and placed successfully")
 
@@ -125,17 +125,14 @@ public class HyperswitchImpl {
         onResult: @escaping PaymentResultCallback,
         onError: @escaping ErrorCallback
     ) {
-        //        guard let elements = elements else {
-        //            onError("elements() must be called first")
-        //            return
-        //        }
-        //
-        //        let newConfig = PaymentSessionConfiguration(sdkAuthorization: sdkAuthorization)
-        //
-        //        elements.updateIntent({ _ in newConfig }) { result in
-        //            print("[Hyperswitch] updateIntent result: \(result)")
-        //            onResult(["type": String(describing: type(of: result))])
-        //        }
+        guard let paymentSession = self.paymentSession else {
+                    onError("elements() must be called first")
+                    return
+                }
+        
+        paymentSession.updateIntent { result in
+                    result(sdkAuthorization)
+                }
     }
 
     // ── initPaymentSession (legacy) ────────────────────────────────────────────
