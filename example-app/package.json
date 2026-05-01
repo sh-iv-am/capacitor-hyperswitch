@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@capacitor/core": "latest",
-    "capacitor-hyperswitch": "file:..",
+    "@juspay-tech/capacitor-hyperswitch": "file:..",
     "@capacitor/ios": "^8.0.0",
     "@capacitor/android": "^8.0.0"
   },
