@@ -1,6 +1,6 @@
 {
   "name": "@juspay-tech/capacitor-hyperswitch",
-  "version": "1.0.0-alpha.1",
+  "version": "0.0.1",
   "description": "Hyperswitch SDK bindings for Capacitor Applications",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
@@ -12,9 +12,8 @@
     "dist/",
     "ios/Sources",
     "ios/Tests",
-    "scripts/android-setup.js",
     "Package.swift",
-    "CapacitorHyperswitch.podspec"
+    "JuspayTechCapacitorHyperswitch.podspec"
   ],
   "author": "sh-iv-am",
   "license": "Apache-2.0",
@@ -33,7 +32,7 @@
   "scripts": {
     "postinstall": "node scripts/android-setup.js",
     "verify": "npm run verify:ios && npm run verify:android && npm run verify:web",
-    "verify:ios": "xcodebuild -scheme CapacitorHyperswitch -destination generic/platform=iOS",
+    "verify:ios": "xcodebuild -scheme JuspayTechCapacitorHyperswitch -destination generic/platform=iOS",
     "verify:android": "cd android && ./gradlew clean build test && cd ..",
     "verify:web": "npm run build",
     "lint": "npm run eslint && npm run prettier -- --check && npm run swiftlint -- lint",

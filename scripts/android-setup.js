@@ -64,7 +64,7 @@ patch('android/build.gradle', path.join(androidDir, 'build.gradle'), (content) =
   // Insert on a new line immediately after the AGP classpath line.
   return content.replace(
     /([ \t]*classpath\s+['"]com\.android\.tools\.build:gradle[^'"]*['"]\s*\n)/,
-    `$1        classpath "io.hyperswitch:hyperswitch-gradle-plugin:0.3.0"\n`,
+    `$1        classpath "io.hyperswitch:hyperswitch-gradle-plugin:0.3.1"\n`,
   );
 });
 
