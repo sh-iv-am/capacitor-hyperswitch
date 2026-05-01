@@ -1,6 +1,6 @@
 {
   "name": "@juspay-tech/capacitor-hyperswitch",
-  "version": "0.0.1",
+  "version": "1.0.1",
   "description": "Hyperswitch SDK bindings for Capacitor Applications",
   "main": "dist/plugin.cjs.js",
   "module": "dist/esm/index.js",
@@ -13,7 +13,8 @@
     "ios/Sources",
     "ios/Tests",
     "Package.swift",
-    "JuspayTechCapacitorHyperswitch.podspec"
+    "JuspayTechCapacitorHyperswitch.podspec",
+    "scripts/android-setup.js"
   ],
   "author": "sh-iv-am",
   "license": "Apache-2.0",
