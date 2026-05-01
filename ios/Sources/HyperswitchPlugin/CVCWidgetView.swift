@@ -8,9 +8,9 @@ public final class CVCWidgetContainer: UIView {
     @discardableResult
     func attach(paymentSession: PaymentSession, configuration: [String: Any] = [:]) -> CVCWidget {
         if let existing = widget { return existing }
-        let widget = CVCWidget(paymentSession: paymentSession, configuration: configuration)
+        let widget = CVCWidget(configurationDict: configuration)
         widget.frame = bounds
-        widget.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+//        widget.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         addSubview(widget)
         self.widget = widget
         return widget

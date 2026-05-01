@@ -8,9 +8,9 @@ public final class PaymentElementContainer: UIView {
     @discardableResult
     func attach(paymentSession: PaymentSession, configuration: [String: Any]) -> PaymentWidget {
         if let existing = widget { return existing }
-        let widget = PaymentWidget(paymentSession: paymentSession, configuration: configuration)
+        let widget = PaymentWidget(paymentSession: paymentSession, configurationDict: configuration)
         widget.frame = bounds
-        widget.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+//        widget.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         addSubview(widget)
         self.widget = widget
         return widget
