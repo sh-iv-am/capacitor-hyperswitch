@@ -30,7 +30,6 @@ export type Layout = 'tabs' | 'accordion' | 'spacedAccordion';
 
 export interface Colors {
   primary?: string;
-  surface?: string;
   background?: string;
   componentBackground?: string;
   componentBorder?: string;
@@ -84,20 +83,44 @@ export interface Font {
 
 export interface PrimaryButtonColors {
   background?: string;
-  onBackground?: string;
+  text?: string;
   border?: string;
 }
 
-export interface PrimaryButtonShape {
-  cornerRadius?: number;
-  borderWidth?: number;
-  shadow?: ShadowConfig;
+export interface PrimaryButtonColorType {
+  light?: PrimaryButtonColors;
+  dark?: PrimaryButtonColors;
 }
 
 export interface PrimaryButton {
-  colorsLight?: PrimaryButtonColors;
-  colorsDark?: PrimaryButtonColors;
-  shape?: PrimaryButtonShape;
+  shapes?: Shapes;
+  colors?: PrimaryButtonColorType;
+}
+
+export type GooglePayButtonType = 'BUY' | 'BOOK' | 'CHECKOUT' | 'DONATE' | 'ORDER' | 'PAY' | 'SUBSCRIBE' | 'PLAIN';
+export type GooglePayButtonStyle = 'light' | 'dark';
+
+export interface GooglePayThemeBaseStyle {
+  light?: GooglePayButtonStyle;
+  dark?: GooglePayButtonStyle;
+}
+
+export interface GooglePayConfiguration {
+  buttonType?: GooglePayButtonType;
+  buttonStyle?: GooglePayThemeBaseStyle;
+}
+
+export type ApplePayButtonType = 'buy' | 'setUp' | 'inStore' | 'donate' | 'checkout' | 'book' | 'subscribe' | 'plain';
+export type ApplePayButtonStyle = 'white' | 'whiteOutline' | 'black';
+
+export interface ApplePayThemeBaseStyle {
+  light?: ApplePayButtonStyle;
+  dark?: ApplePayButtonStyle;
+}
+
+export interface ApplePayConfiguration {
+  buttonType?: ApplePayButtonType;
+  buttonStyle?: ApplePayThemeBaseStyle;
 }
 
 export interface Appearance {
@@ -105,6 +128,8 @@ export interface Appearance {
   shapes?: Shapes;
   font?: Font;
   primaryButton?: PrimaryButton;
+  googlePay?: GooglePayConfiguration;
+  applePay?: ApplePayConfiguration;
   theme?: Theme;
   layout?: Layout;
   locale?: string;
@@ -117,8 +142,8 @@ export interface Placeholder {
 }
 
 export interface Address {
-  firstName?: string;
-  lastName?: string;
+  first_name?: string;
+  last_name?: string;
   city?: string;
   country?: string;
   line1?: string;
@@ -129,48 +154,43 @@ export interface Address {
 
 export interface Phone {
   number?: string;
-  countryCode?: string;
+  country_code?: string;
 }
 
-export interface BillingDetails {
+export interface AddressDetails {
   address?: Address;
   email?: string;
-  name?: string;
-  phone?: Phone;
-}
-
-export interface ShippingDetails {
-  address?: Address;
-  email?: string;
-  name?: string;
   phone?: Phone;
 }
 
 export interface CustomerConfiguration {
-  id: string;
-  ephemeralKeySecret: string;
+  id?: string;
+  ephemeralKeySecret?: string;
 }
 
 export interface PaymentSheetOptions {
   sdkAuthorization: string;
-  appearance?: Appearance;
-  primaryButtonLabel?: string;
-  primaryButtonColor?: string;
-  paymentSheetHeaderLabel?: string;
-  savedPaymentSheetHeaderLabel?: string;
-  merchantDisplayName?: string;
   allowsDelayedPaymentMethods?: boolean;
+  appearance?: Appearance;
+  shippingDetails?: AddressDetails;
+  primaryButtonLabel?: string;
+  paymentSheetHeaderText?: string;
+  savedPaymentScreenHeaderText?: string;
+  merchantDisplayName?: string;
+  defaultBillingDetails?: AddressDetails;
+  primaryButtonColor?: string;
   allowsPaymentMethodsRequiringShippingAddress?: boolean;
-  shippingDetails?: ShippingDetails;
-  defaultBillingDetails?: BillingDetails;
-  displaySavedPaymentMethods?: boolean;
   displaySavedPaymentMethodsCheckbox?: boolean;
-  displayDefaultSavedPaymentIcon?: boolean;
+  displaySavedPaymentMethods?: boolean;
   placeholder?: Placeholder;
-  disableBranding?: boolean;
   defaultView?: boolean;
+  disableBranding?: boolean;
+  netceteraSDKApiKey?: string;
+  displayDefaultSavedPaymentIcon?: boolean;
   enablePartialLoading?: boolean;
   customer?: CustomerConfiguration;
+  paymentSheetHeaderLabel?: string;
+  savedPaymentSheetHeaderLabel?: string;
   subscribedEvents?: SubscriptionEvent[];
   hideConfirmButton?: boolean;
 }
