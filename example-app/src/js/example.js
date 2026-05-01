@@ -74,7 +74,6 @@ window.presentSheet = async () => {
         colors: {
           light: {
             primary: '#D32F2F',
-            surface: '#FAFAFA',
             background: '#FAFAFA',
             componentBackground: '#FFFFFF',
             componentBorder: '#E0E0E0',
@@ -90,7 +89,6 @@ window.presentSheet = async () => {
           },
           dark: {
             primary: '#EF5350',
-            surface: '#1E1E1E',
             background: '#121212',
             componentBackground: '#2C2C2C',
             componentBorder: '#424242',
@@ -109,22 +107,21 @@ window.presentSheet = async () => {
           borderRadius: 12,
           borderWidth: 1
         },
-        font: {
-          scale: 1.0
-        },
-        primaryButton: {
-          colorsLight: {
-            background: '#D32F2F',
-            onBackground: '#FFFFFF',
-            border: '#D32F2F'
+         primaryButton: {
+          shapes: {
+            borderRadius: 12
           },
-          colorsDark: {
-            background: '#EF5350',
-            onBackground: '#FFFFFF',
-            border: '#EF5350'
-          },
-          shape: {
-            cornerRadius: 12
+          colors: {
+            light: {
+              background: '#D32F2F',
+              text: '#FFFFFF',
+              border: '#D32F2F'
+            },
+            dark: {
+              background: '#EF5350',
+              text: '#FFFFFF',
+              border: '#EF5350'
+            }
           }
         },
         theme: 'Default'
@@ -275,12 +272,11 @@ window.mountPaymentElement = () => {
     type: 'paymentElement',
     options: {
       merchantDisplayName: 'Hyperswitch Store',
-      subscribedEvents: ['FORM_STATUS'],
+      // subscribedEvents: ['FORM_STATUS'],
       appearance: {
         colors: {
           light: {
             primary: '#D32F2F',
-            surface: '#FAFAFA',
             background: '#FAFAFA',
             componentBackground: '#FFFFFF',
             componentBorder: '#E0E0E0',
@@ -296,7 +292,6 @@ window.mountPaymentElement = () => {
           },
           dark: {
             primary: '#EF5350',
-            surface: '#1E1E1E',
             background: '#121212',
             componentBackground: '#2C2C2C',
             componentBorder: '#424242',
@@ -319,18 +314,20 @@ window.mountPaymentElement = () => {
           scale: 1.0
         },
         primaryButton: {
-          colorsLight: {
-            background: '#D32F2F',
-            onBackground: '#FFFFFF',
-            border: '#D32F2F'
+          shapes: {
+            borderRadius: 12
           },
-          colorsDark: {
-            background: '#EF5350',
-            onBackground: '#FFFFFF',
-            border: '#EF5350'
-          },
-          shape: {
-            cornerRadius: 12
+          colors: {
+            light: {
+              background: '#D32F2F',
+              text: '#FFFFFF',
+              border: '#D32F2F'
+            },
+            dark: {
+              background: '#EF5350',
+              text: '#FFFFFF',
+              border: '#EF5350'
+            }
           }
         },
         theme: 'Default'
@@ -377,7 +374,7 @@ window.updateIntent = async () => {
       const res = await fetch(`${SERVER_URL}/update-payment`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payment_id: fetchedData.paymentId, currency: 'HKD', amount: 2999 }),
+        body: JSON.stringify({ paymentId: fetchedData.paymentId, currency: 'HKD', amount: 2999 }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return (await res.json()).sdkAuthorization;
