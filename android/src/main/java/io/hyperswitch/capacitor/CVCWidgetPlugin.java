@@ -2,6 +2,7 @@ package io.hyperswitch.capacitor;
 
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.webkit.WebView;
 
 import com.getcapacitor.Plugin;
@@ -19,7 +20,17 @@ public class CVCWidgetPlugin extends Plugin {
     private int contentX;
     private int contentY;
 
+    private int lastOffsetX = -1;
+    private int lastOffsetY = -1;
+
     private View.OnScrollChangeListener scrollListener;
+    private ViewTreeObserver.OnGlobalLayoutListener globalLayoutListener;
+
+    private int[] getWebViewOffset(WebView webView) {
+        int[] pos = new int[2];
+        webView.getLocationInWindow(pos);
+        return pos;
+    }
 
     @PluginMethod
     public void create(PluginCall call) {
@@ -58,8 +69,11 @@ public class CVCWidgetPlugin extends Plugin {
             ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(pxWidth, pxHeight);
             parent.addView(view, params);
 
-            view.setX(contentX - webView.getScrollX());
-            view.setY(contentY - webView.getScrollY());
+            int[] offset = getWebViewOffset(webView);
+            lastOffsetX = offset[0];
+            lastOffsetY = offset[1];
+            view.setX(contentX - webView.getScrollX() + offset[0]);
+            view.setY(contentY - webView.getScrollY() + offset[1]);
 
             updateVisibility(view, webView);
 
@@ -68,12 +82,27 @@ public class CVCWidgetPlugin extends Plugin {
 
             scrollListener = (v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
                 if (cvcWidget != null) {
-                    cvcWidget.setX(contentX - scrollX);
-                    cvcWidget.setY(contentY - scrollY);
+                    int[] off = getWebViewOffset(webView);
+                    cvcWidget.setX(contentX - scrollX + off[0]);
+                    cvcWidget.setY(contentY - scrollY + off[1]);
                     updateVisibility(cvcWidget, webView);
                 }
             };
             webView.setOnScrollChangeListener(scrollListener);
+
+            globalLayoutListener = () -> {
+                if (cvcWidget != null) {
+                    int[] off = getWebViewOffset(webView);
+                    if (off[0] != lastOffsetX || off[1] != lastOffsetY) {
+                        lastOffsetX = off[0];
+                        lastOffsetY = off[1];
+                        cvcWidget.setX(contentX - webView.getScrollX() + off[0]);
+                        cvcWidget.setY(contentY - webView.getScrollY() + off[1]);
+                        updateVisibility(cvcWidget, webView);
+                    }
+                }
+            };
+            webView.getViewTreeObserver().addOnGlobalLayoutListener(globalLayoutListener);
 
             call.resolve();
         });
@@ -119,11 +148,30 @@ public class CVCWidgetPlugin extends Plugin {
             params.height = pxHeight;
             cvcWidget.setLayoutParams(params);
 
-            cvcWidget.setX(contentX - webView.getScrollX());
-            cvcWidget.setY(contentY - webView.getScrollY());
+            int[] offset = getWebViewOffset(webView);
+            lastOffsetX = offset[0];
+            lastOffsetY = offset[1];
+            cvcWidget.setX(contentX - webView.getScrollX() + offset[0]);
+            cvcWidget.setY(contentY - webView.getScrollY() + offset[1]);
 
             updateVisibility(cvcWidget, webView);
 
+            call.resolve();
+        });
+    }
+
+    @PluginMethod
+    public void show(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            if (cvcWidget != null) cvcWidget.setVisibility(View.VISIBLE);
+            call.resolve();
+        });
+    }
+
+    @PluginMethod
+    public void hide(PluginCall call) {
+        getActivity().runOnUiThread(() -> {
+            if (cvcWidget != null) cvcWidget.setVisibility(View.GONE);
             call.resolve();
         });
     }
@@ -140,20 +188,28 @@ public class CVCWidgetPlugin extends Plugin {
             if (webView != null) webView.setOnScrollChangeListener(null);
             scrollListener = null;
         }
+
+        if (globalLayoutListener != null) {
+            WebView webView = getBridge().getWebView();
+            if (webView != null) webView.getViewTreeObserver().removeOnGlobalLayoutListener(globalLayoutListener);
+            globalLayoutListener = null;
+        }
+
+        lastOffsetX = -1;
+        lastOffsetY = -1;
     }
 
     private void updateVisibility(View view, WebView webView) {
-        float viewX = view.getX();
-        float viewY = view.getY();
+        int[] offset = getWebViewOffset(webView);
+        float relativeX = view.getX() - offset[0] + webView.getScrollX();
+        float relativeY = view.getY() - offset[1] + webView.getScrollY();
         int viewWidth = view.getLayoutParams().width;
         int viewHeight = view.getLayoutParams().height;
-        int parentWidth = webView.getWidth();
-        int parentHeight = webView.getHeight();
 
-        boolean offscreen = (viewX + viewWidth <= 0)
-                || (viewY + viewHeight <= 0)
-                || (viewX >= parentWidth)
-                || (viewY >= parentHeight);
+        boolean offscreen = (relativeX + viewWidth <= 0)
+                || (relativeY + viewHeight <= 0)
+                || (relativeX >= webView.getWidth())
+                || (relativeY >= webView.getHeight());
 
         view.setVisibility(offscreen ? View.GONE : View.VISIBLE);
     }

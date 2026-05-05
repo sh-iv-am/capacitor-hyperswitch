@@ -25,6 +25,29 @@ function getContentPosition(el: HTMLElement): { x: number; y: number; width: num
   };
 }
 
+function parseKotlinString(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  const str = value as string;
+  if (!str.startsWith('{') || !str.endsWith('}')) return str;
+  try {
+    const json = str
+      .replace(/(\w+)\s*=/g, '"$1":')
+      .replace(/:(\s*)(true|false)/g, ':$2')
+      .replace(/:(\s*)(\d+\.?\d*)/g, ':$2');
+    return JSON.parse(json);
+  } catch {
+    return str;
+  }
+}
+
+function deepParsePayload(payload: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(payload)) {
+    result[key] = parseKotlinString(value);
+  }
+  return result;
+}
+
 /** Wire up an IntersectionObserver that shows/hides the native view when the
  *  placeholder enters or leaves the viewport (or is covered by an overlay). */
 function observeVisibility(el: HTMLElement, onVisible: () => void, onHidden: () => void): IntersectionObserver {
@@ -122,6 +145,12 @@ export function createPaymentElement(plugin: HyperswitchPlugin, options?: Paymen
       plugin.createElement({ type: 'paymentElement', createOptions: options as unknown as JSONValue ?? {} });
       startObserving(el);
       plugin.elementMount({ selector });
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          syncNativeView();
+          setTimeout(() => syncNativeView(), 100);
+        });
+      });
     },
     focus(): void {
       plugin.elementFocus();
@@ -141,7 +170,9 @@ export function createCvcWidget(
 ): CvcWidget {
   let mountedElement: HTMLElement | null = null;
   let resizeObserver: ResizeObserver | null = null;
+  let mutationObserver: MutationObserver | null = null;
   let intersectionObserver: IntersectionObserver | null = null;
+  let onResize: (() => void) | null = null;
   const eventHandlers: Map<string, Array<(data?: PaymentEventData) => void>> = new Map();
 
   function syncNativeView(): void {
@@ -152,15 +183,27 @@ export function createCvcWidget(
   function stopObserving(): void {
     resizeObserver?.disconnect();
     resizeObserver = null;
+    mutationObserver?.disconnect();
+    mutationObserver = null;
     intersectionObserver?.disconnect();
     intersectionObserver = null;
+    if (onResize) {
+      window.removeEventListener('resize', onResize);
+      onResize = null;
+    }
   }
 
   // Set up event listener for CVC widget events
   plugin.addListener('cvcWidgetEvent', (eventData: PaymentEventData) => {
     if (eventData.type === 'CVC_STATUS') {
+      const parsed: PaymentEventData = {
+        ...eventData,
+        payload: eventData.payload
+          ? deepParsePayload(eventData.payload as Record<string, unknown>) as Record<string, string>
+          : eventData.payload,
+      };
       const handlers = eventHandlers.get('change');
-      handlers?.forEach(handler => handler(eventData));
+      handlers?.forEach(handler => handler(parsed));
     }
   });
 
@@ -191,12 +234,24 @@ export function createCvcWidget(
       });
       resizeObserver = new ResizeObserver(() => syncNativeView());
       resizeObserver.observe(el);
+      mutationObserver = new MutationObserver(() => syncNativeView());
+      if (el.parentElement) {
+        mutationObserver.observe(el.parentElement, { childList: true, subtree: false });
+      }
       intersectionObserver = observeVisibility(
         el,
         () => cvcWidgetPlugin.show(),
         () => cvcWidgetPlugin.hide(),
       );
+      onResize = () => syncNativeView();
+      window.addEventListener('resize', onResize);
       plugin.elementMount({ selector });
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          syncNativeView();
+          setTimeout(() => syncNativeView(), 100);
+        });
+      });
     },
     unmount(): void {
       stopObserving();
