@@ -458,54 +458,187 @@ public class HyperswitchImpl {
 
     public JSObject getCustomerSavedPaymentMethodData(String handlerId) {
         Logger.info("Hyperswitch", "getCustomerSavedPaymentMethodData called, id=" + handlerId);
+        JSObject result = new JSObject();
+
+        if (handlerId == null || handlerId.isEmpty()) {
+            Logger.warn("Hyperswitch", "Invalid handlerId: null or empty");
+            result.put("error", "Invalid handlerId");
+            return result;
+        }
+
         PaymentSessionHandler handler = handlerRegistry.get(handlerId);
         if (handler == null) {
             Logger.warn("Hyperswitch", "No handler for id: " + handlerId);
             return new JSObject();
         }
-        JSObject result = new JSObject();
+
         try {
             Method method = handler.getClass().getMethod("getCustomerSavedPaymentMethodData-d1pmJ48");
+            if (method == null) {
+                result.put("error", "Method not found");
+                return result;
+            }
+
             Object data = method.invoke(handler);
-            if (data != null) result.put("data", data.toString());
+            if (data == null) {
+                Logger.warn("Hyperswitch", "Received null data from getCustomerSavedPaymentMethodData");
+                result.put("data", new org.json.JSONArray());
+                return result;
+            }
+
+            if (data instanceof List) {
+                List<?> paymentMethods = (List<?>) data;
+                org.json.JSONArray jsonArray = new org.json.JSONArray();
+
+                for (int i = 0; i < paymentMethods.size(); i++) {
+                    Object pm = paymentMethods.get(i);
+                    if (pm instanceof io.hyperswitch.paymentsession.PaymentMethod) {
+                        try {
+                            Map<String, Object> map = ((io.hyperswitch.paymentsession.PaymentMethod) pm).toMap();
+                            if (map != null) {
+                                jsonArray.put(new org.json.JSONObject(map));
+                            }
+                        } catch (Exception e) {
+                            Logger.error("Hyperswitch", "Failed to convert PaymentMethod at index " + i, e);
+                        }
+                    }
+                }
+                result.put("data", jsonArray);
+            } else {
+                Logger.warn("Hyperswitch", "Unexpected data type: " + data.getClass().getName());
+                result.put("error", "Unexpected data type");
+            }
+        } catch (NoSuchMethodException e) {
+            Logger.error("Hyperswitch", "Method not found in handler", e);
+            result.put("error", "Method not available: " + e.getMessage());
+        } catch (IllegalAccessException e) {
+            Logger.error("Hyperswitch", "Cannot access method", e);
+            result.put("error", "Access denied: " + e.getMessage());
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            Logger.error("Hyperswitch", "Method invocation failed", cause != null ? cause : e);
+            result.put("error", "Invocation failed: " + (cause != null ? cause.getMessage() : e.getMessage()));
         } catch (Exception e) {
-            Logger.error("Hyperswitch", "getCustomerSavedPaymentMethodData failed", e);
+            Logger.error("Hyperswitch", "Unexpected error in getCustomerSavedPaymentMethodData", e);
+            result.put("error", "Unexpected error: " + e.getMessage());
         }
         return result;
     }
 
     public JSObject getCustomerDefaultSavedPaymentMethodData(String handlerId) {
         Logger.info("Hyperswitch", "getCustomerDefaultSavedPaymentMethodData called, id=" + handlerId);
+        JSObject result = new JSObject();
+
+        if (handlerId == null || handlerId.isEmpty()) {
+            Logger.warn("Hyperswitch", "Invalid handlerId: null or empty");
+            result.put("error", "Invalid handlerId");
+            return result;
+        }
+
         PaymentSessionHandler handler = handlerRegistry.get(handlerId);
         if (handler == null) {
-            Logger.warn("Hyperswitch", "No handler for id: " + handlerId);
-            return new JSObject();
+            Logger.warn("Hyperswitch", "No handler found for id: " + handlerId);
+            result.put("error", "Handler not found");
+            return result;
         }
-        JSObject result = new JSObject();
+
         try {
             Method method = handler.getClass().getMethod("getCustomerDefaultSavedPaymentMethodData-d1pmJ48");
+            if (method == null) {
+                result.put("error", "Method not found");
+                return result;
+            }
+
             Object data = method.invoke(handler);
-            if (data != null) result.put("data", data.toString());
+            if (data == null) {
+                Logger.warn("Hyperswitch", "Received null data from getCustomerDefaultSavedPaymentMethodData");
+                result.put("data", org.json.JSONObject.NULL);
+                return result;
+            }
+
+            if (data instanceof io.hyperswitch.paymentsession.PaymentMethod) {
+                Map<String, Object> map = ((io.hyperswitch.paymentsession.PaymentMethod) data).toMap();
+                if (map != null) {
+                    result.put("data", new org.json.JSONObject(map));
+                } else {
+                    result.put("error", "toMap() returned null");
+                }
+            } else {
+                Logger.warn("Hyperswitch", "Unexpected data type: " + data.getClass().getName());
+                result.put("error", "Unexpected data type: " + data.getClass().getSimpleName());
+            }
+        } catch (NoSuchMethodException e) {
+            Logger.error("Hyperswitch", "Method not found in handler", e);
+            result.put("error", "Method not available: " + e.getMessage());
+        } catch (IllegalAccessException e) {
+            Logger.error("Hyperswitch", "Cannot access method", e);
+            result.put("error", "Access denied: " + e.getMessage());
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            Logger.error("Hyperswitch", "Method invocation failed", cause != null ? cause : e);
+            result.put("error", "Invocation failed: " + (cause != null ? cause.getMessage() : e.getMessage()));
         } catch (Exception e) {
-            Logger.error("Hyperswitch", "getCustomerDefaultSavedPaymentMethodData failed", e);
+            Logger.error("Hyperswitch", "Unexpected error in getCustomerDefaultSavedPaymentMethodData", e);
+            result.put("error", "Unexpected error: " + e.getMessage());
         }
         return result;
     }
 
     public JSObject getCustomerLastUsedPaymentMethodData(String handlerId) {
         Logger.info("Hyperswitch", "getCustomerLastUsedPaymentMethodData called, id=" + handlerId);
+        JSObject result = new JSObject();
+
+        if (handlerId == null || handlerId.isEmpty()) {
+            Logger.warn("Hyperswitch", "Invalid handlerId: null or empty");
+            result.put("error", "Invalid handlerId");
+            return result;
+        }
+
         PaymentSessionHandler handler = handlerRegistry.get(handlerId);
         if (handler == null) {
-            Logger.warn("Hyperswitch", "No handler for id: " + handlerId);
-            return new JSObject();
+            Logger.warn("Hyperswitch", "No handler found for id: " + handlerId);
+            result.put("error", "Handler not found");
+            return result;
         }
-        JSObject result = new JSObject();
+
         try {
             Method method = handler.getClass().getMethod("getCustomerLastUsedPaymentMethodData-d1pmJ48");
+            if (method == null) {
+                result.put("error", "Method not found");
+                return result;
+            }
+
             Object data = method.invoke(handler);
-            if (data != null) result.put("data", data.toString());
+            if (data == null) {
+                Logger.warn("Hyperswitch", "Received null data from getCustomerLastUsedPaymentMethodData");
+                result.put("data", org.json.JSONObject.NULL);
+                return result;
+            }
+
+            if (data instanceof io.hyperswitch.paymentsession.PaymentMethod) {
+                Map<String, Object> map = ((io.hyperswitch.paymentsession.PaymentMethod) data).toMap();
+                if (map != null) {
+                    result.put("data", new org.json.JSONObject(map));
+                } else {
+                    result.put("error", "toMap() returned null");
+                }
+            } else {
+                Logger.warn("Hyperswitch", "Unexpected data type: " + data.getClass().getName());
+                result.put("error", "Unexpected data type: " + data.getClass().getSimpleName());
+            }
+        } catch (NoSuchMethodException e) {
+            Logger.error("Hyperswitch", "Method not found in handler", e);
+            result.put("error", "Method not available: " + e.getMessage());
+        } catch (IllegalAccessException e) {
+            Logger.error("Hyperswitch", "Cannot access method", e);
+            result.put("error", "Access denied: " + e.getMessage());
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            Logger.error("Hyperswitch", "Method invocation failed", cause != null ? cause : e);
+            result.put("error", "Invocation failed: " + (cause != null ? cause.getMessage() : e.getMessage()));
         } catch (Exception e) {
-            Logger.error("Hyperswitch", "getCustomerLastUsedPaymentMethodData failed", e);
+            Logger.error("Hyperswitch", "Unexpected error in getCustomerLastUsedPaymentMethodData", e);
+            result.put("error", "Unexpected error: " + e.getMessage());
         }
         return result;
     }
