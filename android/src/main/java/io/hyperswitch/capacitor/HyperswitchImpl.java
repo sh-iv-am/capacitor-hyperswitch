@@ -65,6 +65,7 @@ public class HyperswitchImpl {
 
     // Legacy PaymentSession (used by presentPaymentSheet)
     private PaymentSession paymentSession;
+    private String sdkAuth;
 
     // Event forwarding (set by HyperswitchPlugin via setEventListener)
     private NativeEventListener eventListener;
@@ -134,6 +135,28 @@ public class HyperswitchImpl {
 
         Logger.info("Hyperswitch", "Initialized with publishableKey: " + publishableKey);
 
+        String customBackendUrl = customEndpointConfig != null ?
+                customEndpointConfig.getOverrideCustomBackendEndpoint() != null ?
+                        customEndpointConfig.getOverrideCustomBackendEndpoint() : customEndpointConfig.getCustomEndpoint() : null;
+
+        String customLoggingUrl = customEndpointConfig != null ?
+                customEndpointConfig.getOverrideCustomLoggingEndpoint() != null ?
+                        customEndpointConfig.getOverrideCustomLoggingEndpoint() : customEndpointConfig.getCustomEndpoint() : null;
+
+        if(customBackendUrl != null && customLoggingUrl != null) {
+            paymentSession = new PaymentSession(
+                    activity,
+                    publishableKey,
+                    customBackendUrl,
+                    customLoggingUrl
+            );
+        } else {
+            paymentSession = new PaymentSession(
+                    activity,
+                    publishableKey
+            );
+        }
+
         hyperswitchInstance = Hyperswitch.INSTANCE.init(
                 activity,
                 new HyperswitchConfiguration(publishableKey, profileId, customEndpointConfig, env)
@@ -159,7 +182,7 @@ public class HyperswitchImpl {
     public void elements(JSObject elementsOptions, ElementsCallback callback) {
         Logger.info("Hyperswitch", "elements called");
 
-        if (hyperswitchInstance == null) {
+        if (paymentSession == null) {
             if (callback != null) callback.onError("Hyperswitch not initialised — call init() first");
             return;
         }
@@ -173,21 +196,16 @@ public class HyperswitchImpl {
             return;
         }
 
+        sdkAuth = sdkAuthorization;
+        // Create Elements session using the callback-based overload
+        paymentSession.initPaymentSession(sdkAuthorization);
+
         PaymentSessionConfiguration sessionConfig = new PaymentSessionConfiguration(sdkAuthorization);
 
         // Create Elements session using the callback-based overload
         hyperswitchInstance.elements(sessionConfig, elementsInstance -> {
             this.elements = elementsInstance;
-
-            // Fetch saved payment methods immediately so they are ready
-            elementsInstance.getCustomerSavedPaymentMethods(handler -> {
-                String handlerId = UUID.randomUUID().toString();
-                handlerRegistry.put(handlerId, handler);
-                Logger.info("Hyperswitch", "Elements ready, PaymentSessionHandler stored with id: " + handlerId);
-                if (callback != null) callback.onReady(handlerId);
-                return null;
-            });
-
+            if (callback != null) callback.onReady("");
             return null;
         });
     }
@@ -295,6 +313,8 @@ public class HyperswitchImpl {
 
         PaymentSessionConfiguration newConfig = new PaymentSessionConfiguration(sdkAuthorization);
 
+        sdkAuth = sdkAuthorization;
+
         // Callback overload: updateIntent(completion, onResult)
         // The completion lambda is called by the SDK to fetch the new config — we return it
         // synchronously since the JS side already resolved the new sdkAuthorization before
@@ -337,7 +357,7 @@ public class HyperswitchImpl {
     public void initPaymentSession(JSObject paymentSessionOptions, InitPaymentSessionCallback callback) {
         Logger.info("Hyperswitch", "initPaymentSession called");
 
-        if (hyperswitchInstance == null) {
+        if (paymentSession == null) {
             if (callback != null) callback.onError("Hyperswitch not initialised — call init() first");
             return;
         }
@@ -346,6 +366,10 @@ public class HyperswitchImpl {
                 ? paymentSessionOptions.getString("sdkAuthorization")
                 : null;
 
+        sdkAuth = sdkAuthorization;
+
+        paymentSession.initPaymentSession(sdkAuthorization != null ? sdkAuthorization : "");
+        
         hyperswitchInstance.initPaymentSession(
                 new PaymentSessionConfiguration(sdkAuthorization != null ? sdkAuthorization : ""),
                 session -> {
@@ -368,7 +392,7 @@ public class HyperswitchImpl {
         }
 
         Map<String, Object> configMap = new HashMap<>();
-        configMap.put("sdkAuthorization", paymentSession.getSdkAuthorization());
+        configMap.put("sdkAuthorization", sdkAuth);
         configMap.put("publishableKey", paymentSession.getPublishableKey());
         configMap.put("from", "rn");
         configMap.put("type", "payment");

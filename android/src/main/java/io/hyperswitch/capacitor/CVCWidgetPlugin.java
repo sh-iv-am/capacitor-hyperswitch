@@ -200,15 +200,15 @@ public class CVCWidgetPlugin extends Plugin {
 
     private void updateVisibility(View view, WebView webView) {
         int[] offset = getWebViewOffset(webView);
-        float relativeX = view.getX() - offset[0] + webView.getScrollX();
-        float relativeY = view.getY() - offset[1] + webView.getScrollY();
+        float viewportX = view.getX() - offset[0];
+        float viewportY = view.getY() - offset[1];
         int viewWidth = view.getLayoutParams().width;
         int viewHeight = view.getLayoutParams().height;
 
-        boolean offscreen = (relativeX + viewWidth <= 0)
-                || (relativeY + viewHeight <= 0)
-                || (relativeX >= webView.getWidth())
-                || (relativeY >= webView.getHeight());
+        boolean offscreen = (viewportX + viewWidth <= 0)
+                || (viewportY + viewHeight <= 0)
+                || (viewportX >= webView.getWidth())
+                || (viewportY >= webView.getHeight());
 
         view.setVisibility(offscreen ? View.GONE : View.VISIBLE);
     }
