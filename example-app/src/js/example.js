@@ -70,69 +70,23 @@ window.presentSheet = async () => {
   out('sheetOutput', 'Presenting…');
   try {
     const result = await flow1Session.presentPaymentSheet({
-      appearance: {
-        colors: {
-          light: {
-            primary: '#D32F2F',
-            background: '#FAFAFA',
-            componentBackground: '#FFFFFF',
-            componentBorder: '#E0E0E0',
-            componentDivider: '#EEEEEE',
-            componentText: '#212121',
-            primaryText: '#212121',
-            secondaryText: '#757575',
-            placeholderText: '#BDBDBD',
-            icon: '#757575',
-            error: '#D32F2F',
-            loaderBackground: '#FFEBEE',
-            loaderForeground: '#D32F2F'
+      "appearance": {
+        "colors": {
+          "light": { "primary": "#00A826", "background": "#ffffff", "componentBackground": "#f9fafb", "componentBorder": "#e5e7eb", "componentText": "#333333", "primaryText": "#ffffff", "secondaryText": "#666666", "error": "#ef4444" },
+          "dark": { "primary": "#00A826", "background": "#ffffff", "componentBackground": "#f9fafb", "componentBorder": "#e5e7eb", "componentText": "#333333", "primaryText": "#ffffff", "secondaryText": "#666666", "error": "#ef4444" }
+        },
+        "primaryButton": {
+          "colors": {
+            "light": { "background": "#00A826", "text": "#ffffff", "border": "#00A826" },
+            "dark": { "background": "#00A826", "text": "#ffffff", "border": "#00A826" }
           },
-          dark: {
-            primary: '#EF5350',
-            background: '#121212',
-            componentBackground: '#2C2C2C',
-            componentBorder: '#424242',
-            componentDivider: '#333333',
-            componentText: '#EEEEEE',
-            primaryText: '#EEEEEE',
-            secondaryText: '#BDBDBD',
-            placeholderText: '#757575',
-            icon: '#BDBDBD',
-            error: '#EF5350',
-            loaderBackground: '#3E2723',
-            loaderForeground: '#EF5350'
-          }
+          "shapes": { "borderRadius": 16, "borderWidth": 0 }
         },
-        shapes: {
-          borderRadius: 12,
-          borderWidth: 1
-        },
-         primaryButton: {
-          shapes: {
-            borderRadius: 12
-          },
-          colors: {
-            light: {
-              background: '#D32F2F',
-              text: '#FFFFFF',
-              border: '#D32F2F'
-            },
-            dark: {
-              background: '#EF5350',
-              text: '#FFFFFF',
-              border: '#EF5350'
-            }
-          }
-        },
-        theme: 'Default'
+        "shapes": { "borderRadius": 8, "borderWidth": 1 },
+        "layout": "accordion"
       },
-      primaryButtonLabel: 'Pay Now',
-      merchantDisplayName: 'Hyperswitch Store',
-      placeholder: {
-        cardNumber: '4242 4242 4242 4242',
-        expiryDate: 'MM / YY',
-        cvv: 'CVC'
-      }
+      "primaryButtonColor": "#00A826",
+      "merchantDisplayName": "SuperPay"
     });
     out('sheetOutput', resultText(result));
   } catch (err) {
@@ -156,9 +110,9 @@ window.getCustomerSavedPaymentMethods = async () => {
 window.mountCvcWidget = () => {
   if (!flow1Session) { out('savedMethodsOutput', 'Call initPaymentSession first.'); return; }
   if (!elementsSession) { out('savedMethodsOutput', 'CvcWidget requires Elements session — call elements() first (Flow 2).'); return; }
-  
+
   // Create CVC widget WITH configuration options
-  cvcWidget = elementsSession.create({ 
+  cvcWidget = elementsSession.create({
     type: 'cvcWidget',
 
     options: {
@@ -192,14 +146,14 @@ window.mountCvcWidget = () => {
       placeholder: 'cvc123'
     }
   });
-  
+
   cvcWidget.mount('#cvc-widget');
-  
+
   // Add event listener to show it's working
   cvcWidget.on('change', (event) => {
     console.log('CVC Widget event:', JSON.stringify(event));
   });
-  
+
   out('savedMethodsOutput', 'CVC Widget mounted with configuration');
 };
 
@@ -266,7 +220,7 @@ window.initElements = async () => {
 
 window.mountPaymentElement = () => {
   if (!elementsSession) { out('confirmOutput', 'Call elements() first.'); return; }
-  
+
   // Create PaymentElement with ALL RED configuration
   paymentElement = elementsSession.create({
     type: 'paymentElement',
@@ -339,13 +293,13 @@ window.mountPaymentElement = () => {
       }
     }
   });
-  
+
   paymentElement.mount('#payment-element');
-  
+
   paymentElement.on('FORM_STATUS', (event) => console.log('eventt:', JSON.stringify(event)));
   paymentElement.on('PAYMENT_METHOD_STATUS', (event) => console.log('eventt2:', JSON.stringify(event)));
   paymentElement.on('PAYMENT_METHOD_INFO_CARD', (event) => console.log('eventt3:', JSON.stringify(event)));
-  
+
   out('confirmOutput', 'PaymentElement mounted with ALL RED configuration');
 };
 

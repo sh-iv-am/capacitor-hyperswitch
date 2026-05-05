@@ -82,9 +82,8 @@ public class CVCWidgetPlugin extends Plugin {
 
             scrollListener = (v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
                 if (cvcWidget != null) {
-                    int[] off = getWebViewOffset(webView);
-                    cvcWidget.setX(contentX - scrollX + off[0]);
-                    cvcWidget.setY(contentY - scrollY + off[1]);
+                    cvcWidget.setX(contentX - scrollX + lastOffsetX);
+                    cvcWidget.setY(contentY - scrollY + lastOffsetY);
                     updateVisibility(cvcWidget, webView);
                 }
             };

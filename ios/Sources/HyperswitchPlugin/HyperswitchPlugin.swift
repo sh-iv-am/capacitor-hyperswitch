@@ -120,8 +120,11 @@ public class HyperswitchPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
 
+        let sheetOptions = call.getObject("sheetOptions") as? [String: Any]
+
         impl.presentPaymentSheet(
             viewController: viewController,
+            sheetOptions: sheetOptions,
             onResult: { result in call.resolve(result) },
             onError: { msg in call.reject(msg) }
         )

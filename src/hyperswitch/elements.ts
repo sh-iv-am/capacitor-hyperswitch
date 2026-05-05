@@ -25,29 +25,6 @@ function getContentPosition(el: HTMLElement): { x: number; y: number; width: num
   };
 }
 
-function parseKotlinString(value: unknown): unknown {
-  if (typeof value !== 'string') return value;
-  const str = value as string;
-  if (!str.startsWith('{') || !str.endsWith('}')) return str;
-  try {
-    const json = str
-      .replace(/(\w+)\s*=/g, '"$1":')
-      .replace(/:(\s*)(true|false)/g, ':$2')
-      .replace(/:(\s*)(\d+\.?\d*)/g, ':$2');
-    return JSON.parse(json);
-  } catch {
-    return str;
-  }
-}
-
-function deepParsePayload(payload: Record<string, unknown>): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(payload)) {
-    result[key] = parseKotlinString(value);
-  }
-  return result;
-}
-
 /** Wire up an IntersectionObserver that shows/hides the native view when the
  *  placeholder enters or leaves the viewport (or is covered by an overlay). */
 function observeVisibility(el: HTMLElement, onVisible: () => void, onHidden: () => void): IntersectionObserver {
@@ -82,9 +59,12 @@ export function createPaymentElement(plugin: HyperswitchPlugin, options?: Paymen
     resizeObserver = new ResizeObserver(() => syncNativeView());
     resizeObserver.observe(el);
     mutationObserver = new MutationObserver(() => syncNativeView());
-    if (el.parentElement) {
-      mutationObserver.observe(el.parentElement, { childList: true, subtree: false });
-    }
+    mutationObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class'],
+    });
     intersectionObserver = observeVisibility(
       el,
       () => paymentElementPlugin.show(),
@@ -142,15 +122,9 @@ export function createPaymentElement(plugin: HyperswitchPlugin, options?: Paymen
       mountedElement = el;
       // Create the native view first, then bind it via createElement
       paymentElementPlugin.create({ ...getContentPosition(el) });
-      plugin.createElement({ type: 'paymentElement', createOptions: options as unknown as JSONValue ?? {} });
+      plugin.createElement({ type: 'paymentElement', createOptions: (options as unknown as JSONValue) ?? {} });
       startObserving(el);
       plugin.elementMount({ selector });
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          syncNativeView();
-          setTimeout(() => syncNativeView(), 100);
-        });
-      });
     },
     focus(): void {
       plugin.elementFocus();
@@ -164,10 +138,7 @@ export function createPaymentElement(plugin: HyperswitchPlugin, options?: Paymen
   };
 }
 
-export function createCvcWidget(
-  plugin: HyperswitchPlugin,
-  options?: CvcWidgetOptions
-): CvcWidget {
+export function createCvcWidget(plugin: HyperswitchPlugin, options?: CvcWidgetOptions): CvcWidget {
   let mountedElement: HTMLElement | null = null;
   let resizeObserver: ResizeObserver | null = null;
   let mutationObserver: MutationObserver | null = null;
@@ -196,14 +167,8 @@ export function createCvcWidget(
   // Set up event listener for CVC widget events
   plugin.addListener('cvcWidgetEvent', (eventData: PaymentEventData) => {
     if (eventData.type === 'CVC_STATUS') {
-      const parsed: PaymentEventData = {
-        ...eventData,
-        payload: eventData.payload
-          ? deepParsePayload(eventData.payload as Record<string, unknown>) as Record<string, string>
-          : eventData.payload,
-      };
       const handlers = eventHandlers.get('change');
-      handlers?.forEach(handler => handler(parsed));
+      handlers?.forEach((handler) => handler(eventData));
     }
   });
 
@@ -215,29 +180,32 @@ export function createCvcWidget(
         return;
       }
       mountedElement = el;
-      
+
       // Merge options: mount options take precedence over create options
       const mergedOptions: CvcWidgetOptions = {
         ...options,
         ...mountOptions,
       };
-      
+
       // Create the native view first, then bind it via createElement
       cvcWidgetPlugin.create({ ...getContentPosition(el) });
       const cvcCreateOptions = { ...(mergedOptions as unknown as Record<string, unknown>) };
       if (typeof cvcCreateOptions.placeholder === 'string') {
         cvcCreateOptions.placeholder = { cvv: cvcCreateOptions.placeholder };
       }
-      plugin.createElement({ 
-        type: 'cvcWidget', 
-        createOptions: cvcCreateOptions as unknown as JSONValue 
+      plugin.createElement({
+        type: 'cvcWidget',
+        createOptions: cvcCreateOptions as unknown as JSONValue,
       });
       resizeObserver = new ResizeObserver(() => syncNativeView());
       resizeObserver.observe(el);
       mutationObserver = new MutationObserver(() => syncNativeView());
-      if (el.parentElement) {
-        mutationObserver.observe(el.parentElement, { childList: true, subtree: false });
-      }
+      mutationObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style', 'class'],
+      });
       intersectionObserver = observeVisibility(
         el,
         () => cvcWidgetPlugin.show(),
@@ -246,12 +214,6 @@ export function createCvcWidget(
       onResize = () => syncNativeView();
       window.addEventListener('resize', onResize);
       plugin.elementMount({ selector });
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          syncNativeView();
-          setTimeout(() => syncNativeView(), 100);
-        });
-      });
     },
     unmount(): void {
       stopObserving();
@@ -276,7 +238,10 @@ export function createCvcWidget(
 export function createElements(plugin: HyperswitchPlugin): Elements {
   function create(options: { type: 'paymentElement'; options?: PaymentSheetOptions }): PaymentElement;
   function create(options: { type: 'cvcWidget'; options?: CvcWidgetOptions }): CvcWidget;
-  function create(options: { type: 'paymentElement' | 'cvcWidget'; options?: PaymentSheetOptions | CvcWidgetOptions }): PaymentElement | CvcWidget {
+  function create(options: {
+    type: 'paymentElement' | 'cvcWidget';
+    options?: PaymentSheetOptions | CvcWidgetOptions;
+  }): PaymentElement | CvcWidget {
     if (options.type === 'cvcWidget') {
       return createCvcWidget(plugin, options.options as CvcWidgetOptions);
     }

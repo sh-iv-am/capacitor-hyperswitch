@@ -1,11 +1,13 @@
 package io.hyperswitch.capacitor;
 
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
+import java.util.List;
 import java.util.Map;
 
 @CapacitorPlugin(name = "Hyperswitch")
@@ -23,14 +25,7 @@ public class HyperswitchPlugin extends Plugin {
         implementation.setEventListener((type, payload, source) -> {
             JSObject data = new JSObject();
             data.put("type", type);
-            JSObject payloadJs = new JSObject();
-            for (Map.Entry<String, Object> entry : payload.entrySet()) {
-                Object value = entry.getValue();
-                if (value != null) {
-                    payloadJs.put(entry.getKey(), value.toString());
-                }
-            }
-            data.put("payload", payloadJs);
+            data.put("payload", toJSObject(payload));
             String channel = switch (source) {
                 case "paymentElement" -> "paymentElementEvent";
                 case "cvcWidget" -> "cvcWidgetEvent";
@@ -292,5 +287,35 @@ public class HyperswitchPlugin extends Plugin {
     @PluginMethod
     public void elementDestroy(PluginCall call) {
         call.resolve();
+    }
+
+    // ── Serialization helpers ─────────────────────────────────────────────────────────────────
+
+    @SuppressWarnings("unchecked")
+    private static JSObject toJSObject(Map<String, Object> map) {
+        JSObject obj = new JSObject();
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            obj.put(entry.getKey(), toJSValue(entry.getValue()));
+        }
+        return obj;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Object toJSValue(Object value) {
+        if (value == null) return null;
+        if (value instanceof Map) return toJSObject((Map<String, Object>) value);
+        if (value instanceof List) {
+            JSArray arr = new JSArray();
+            for (Object item : (List<?>) value) {
+                arr.put(toJSValue(item));
+            }
+            return arr;
+        }
+        if (value instanceof Boolean || value instanceof Integer
+                || value instanceof Long || value instanceof Double
+                || value instanceof Float) {
+            return value;
+        }
+        return value.toString();
     }
 }

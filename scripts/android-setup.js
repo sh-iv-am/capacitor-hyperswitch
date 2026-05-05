@@ -59,7 +59,12 @@ function patch(label, filePath, fn) {
 // ── 1. android/build.gradle — add Hyperswitch Gradle plugin classpath ─────────
 
 patch('android/build.gradle', path.join(androidDir, 'build.gradle'), (content) => {
-  if (content.includes('io.hyperswitch:hyperswitch-gradle-plugin')) return content;
+  if (content.includes('io.hyperswitch:hyperswitch-gradle-plugin')) {
+    return content.replace(
+      /classpath\s+["']io\.hyperswitch:hyperswitch-gradle-plugin:[^"']+["']/,
+      `classpath "io.hyperswitch:hyperswitch-gradle-plugin:0.3.1"`,
+    );
+  }
 
   // Insert on a new line immediately after the AGP classpath line.
   return content.replace(

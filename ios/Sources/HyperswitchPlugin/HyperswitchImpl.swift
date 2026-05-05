@@ -12,6 +12,7 @@ public class HyperswitchImpl {
     // ── State ──────────────────────────────────────────────────────────────────
 
     private var paymentSession: PaymentSession?
+    private var currentSdkAuthorization: String?
 
     // Containers placed by the plugins in webView.scrollView. The SDK widget
     // is attached lazily during createElement(), once paymentSession exists.
@@ -112,7 +113,7 @@ public class HyperswitchImpl {
                     print("[Hyperswitch] CVCWidget container not registered — call create() first")
                     return
                 }
-                container.attach(paymentSession: paymentSession, configuration: [:])
+                container.attach(paymentSession: paymentSession, configuration: createOptions ?? [:])
                 print("[Hyperswitch] CVCWidget created and placed successfully")
             }
         }
@@ -147,6 +148,7 @@ public class HyperswitchImpl {
             return
         }
         paymentSession.initPaymentSession(sdkAuthorization: sdkAuthorization)
+        currentSdkAuthorization = sdkAuthorization
         onReady()
     }
 
@@ -154,6 +156,7 @@ public class HyperswitchImpl {
 
     func presentPaymentSheet(
         viewController: UIViewController,
+        sheetOptions: [String: Any]?,
         onResult: @escaping PaymentResultCallback,
         onError: @escaping ErrorCallback
     ) {
@@ -162,8 +165,10 @@ public class HyperswitchImpl {
             return
         }
 
+        var params: [String: Any] = sheetOptions ?? [:]
+
         DispatchQueue.main.async {
-            paymentSession.presentPaymentSheetWithParams(viewController: viewController, params: [:]) {
+            paymentSession.presentPaymentSheetWithParams(viewController: viewController, params: params) {
                 result in
                 onResult(self.paymentResultToDict(result))
             }
@@ -221,7 +226,7 @@ public class HyperswitchImpl {
             return [:]
         }
         let data = handler.getCustomerSavedPaymentMethodData()
-        return data != nil ? ["data": String(describing: data)] : [:]
+        return serializePaymentMethodData(data)
     }
 
     func getCustomerDefaultSavedPaymentMethodData(handlerId: String) -> [String: Any] {
@@ -230,7 +235,7 @@ public class HyperswitchImpl {
             return [:]
         }
         let data = handler.getCustomerDefaultSavedPaymentMethodData()
-        return data != nil ? ["data": String(describing: data)] : [:]
+        return serializePaymentMethodData(data)
     }
 
     func getCustomerLastUsedPaymentMethodData(handlerId: String) -> [String: Any] {
@@ -239,10 +244,27 @@ public class HyperswitchImpl {
             return [:]
         }
         let data = handler.getCustomerLastUsedPaymentMethodData()
-        return data != nil ? ["data": String(describing: data)] : [:]
+        return serializePaymentMethodData(data)
     }
 
     // ── Handler-scoped confirm methods ─────────────────────────────────────────
+
+    func confirmWithCustomerDefaultPaymentMethod(
+        handlerId: String,
+        onResult: @escaping PaymentResultCallback,
+        onError: @escaping ErrorCallback
+    ) {
+        guard let handler = handlerRegistry[handlerId] else {
+            onError("No handler for id: \(handlerId)")
+            return
+        }
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            handler.confirmWithCustomerDefaultPaymentMethod { result in
+                onResult(self.paymentResultToDict(result))
+            }
+        }
+    }
 
     func confirmWithCustomerLastUsedPaymentMethod(
         handlerId: String,
@@ -265,6 +287,24 @@ public class HyperswitchImpl {
     }
 
     // ── Helper ─────────────────────────────────────────────────────────────────
+
+    private func serializePaymentMethodData(_ data: Any?) -> [String: Any] {
+        guard let data = data else { return [:] }
+        if let dict = data as? [String: Any] {
+            if let jsonData = try? JSONSerialization.data(withJSONObject: dict),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                return ["data": jsonString]
+            }
+            return ["data": dict]
+        }
+        if let arr = data as? [Any] {
+            if let jsonData = try? JSONSerialization.data(withJSONObject: arr),
+               let jsonString = String(data: jsonData, encoding: .utf8) {
+                return ["data": jsonString]
+            }
+        }
+        return ["data": "\(data)"]
+    }
 
     private func paymentResultToDict(_ result: PaymentResult) -> [String: Any] {
         switch result {

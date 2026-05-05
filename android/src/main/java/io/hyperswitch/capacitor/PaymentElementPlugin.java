@@ -83,9 +83,8 @@ public class PaymentElementPlugin extends Plugin {
 
             scrollListener = (v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
                 if (paymentElement != null) {
-                    int[] off = getWebViewOffset(webView);
-                    paymentElement.setX(contentX - scrollX + off[0]);
-                    paymentElement.setY(contentY - scrollY + off[1]);
+                    paymentElement.setX(contentX - scrollX + lastOffsetX);
+                    paymentElement.setY(contentY - scrollY + lastOffsetY);
                     updateVisibility(paymentElement, webView);
                 }
             };
