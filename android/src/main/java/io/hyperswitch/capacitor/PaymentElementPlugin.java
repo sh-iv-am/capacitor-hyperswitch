@@ -3,6 +3,7 @@ package io.hyperswitch.capacitor;
 import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.webkit.WebView;
 
 import com.getcapacitor.Plugin;
@@ -21,6 +22,13 @@ public class PaymentElementPlugin extends Plugin {
     private int contentY;
 
     private View.OnScrollChangeListener scrollListener;
+    private ViewTreeObserver.OnGlobalLayoutListener globalLayoutListener;
+
+    private int[] getWebViewOffset(WebView webView) {
+        int[] pos = new int[2];
+        webView.getLocationInWindow(pos);
+        return pos;
+    }
 
     @PluginMethod
     public void create(PluginCall call) {
@@ -59,8 +67,9 @@ public class PaymentElementPlugin extends Plugin {
             ViewGroup.LayoutParams params = new ViewGroup.LayoutParams(pxWidth, pxHeight);
             parent.addView(view, params);
 
-            view.setX(contentX - webView.getScrollX());
-            view.setY(contentY - webView.getScrollY());
+            int[] offset = getWebViewOffset(webView);
+            view.setX(contentX - webView.getScrollX() + offset[0]);
+            view.setY(contentY - webView.getScrollY() + offset[1]);
 
             updateVisibility(view, webView);
 
@@ -69,12 +78,23 @@ public class PaymentElementPlugin extends Plugin {
 
             scrollListener = (v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
                 if (paymentElement != null) {
-                    paymentElement.setX(contentX - scrollX);
-                    paymentElement.setY(contentY - scrollY);
+                    int[] off = getWebViewOffset(webView);
+                    paymentElement.setX(contentX - scrollX + off[0]);
+                    paymentElement.setY(contentY - scrollY + off[1]);
                     updateVisibility(paymentElement, webView);
                 }
             };
             webView.setOnScrollChangeListener(scrollListener);
+
+            globalLayoutListener = () -> {
+                if (paymentElement != null) {
+                    int[] off = getWebViewOffset(webView);
+                    paymentElement.setX(contentX - webView.getScrollX() + off[0]);
+                    paymentElement.setY(contentY - webView.getScrollY() + off[1]);
+                    updateVisibility(paymentElement, webView);
+                }
+            };
+            webView.getViewTreeObserver().addOnGlobalLayoutListener(globalLayoutListener);
 
             call.resolve();
         });
@@ -120,8 +140,9 @@ public class PaymentElementPlugin extends Plugin {
             params.height = pxHeight;
             paymentElement.setLayoutParams(params);
 
-            paymentElement.setX(contentX - webView.getScrollX());
-            paymentElement.setY(contentY - webView.getScrollY());
+            int[] offset = getWebViewOffset(webView);
+            paymentElement.setX(contentX - webView.getScrollX() + offset[0]);
+            paymentElement.setY(contentY - webView.getScrollY() + offset[1]);
 
             updateVisibility(paymentElement, webView);
 
@@ -157,20 +178,25 @@ public class PaymentElementPlugin extends Plugin {
             if (webView != null) webView.setOnScrollChangeListener(null);
             scrollListener = null;
         }
+
+        if (globalLayoutListener != null) {
+            WebView webView = getBridge().getWebView();
+            if (webView != null) webView.getViewTreeObserver().removeOnGlobalLayoutListener(globalLayoutListener);
+            globalLayoutListener = null;
+        }
     }
 
     private void updateVisibility(View view, WebView webView) {
-        float viewX = view.getX();
-        float viewY = view.getY();
+        int[] offset = getWebViewOffset(webView);
+        float relativeX = view.getX() - offset[0] + webView.getScrollX();
+        float relativeY = view.getY() - offset[1] + webView.getScrollY();
         int viewWidth = view.getLayoutParams().width;
         int viewHeight = view.getLayoutParams().height;
-        int parentWidth = webView.getWidth();
-        int parentHeight = webView.getHeight();
 
-        boolean offscreen = (viewX + viewWidth <= 0)
-                || (viewY + viewHeight <= 0)
-                || (viewX >= parentWidth)
-                || (viewY >= parentHeight);
+        boolean offscreen = (relativeX + viewWidth <= 0)
+                || (relativeY + viewHeight <= 0)
+                || (relativeX >= webView.getWidth())
+                || (relativeY >= webView.getHeight());
 
         view.setVisibility(offscreen ? View.GONE : View.VISIBLE);
     }
