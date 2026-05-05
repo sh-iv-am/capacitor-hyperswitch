@@ -21,6 +21,9 @@ public class PaymentElementPlugin extends Plugin {
     private int contentX;
     private int contentY;
 
+    private int lastOffsetX = -1;
+    private int lastOffsetY = -1;
+
     private View.OnScrollChangeListener scrollListener;
     private ViewTreeObserver.OnGlobalLayoutListener globalLayoutListener;
 
@@ -68,6 +71,8 @@ public class PaymentElementPlugin extends Plugin {
             parent.addView(view, params);
 
             int[] offset = getWebViewOffset(webView);
+            lastOffsetX = offset[0];
+            lastOffsetY = offset[1];
             view.setX(contentX - webView.getScrollX() + offset[0]);
             view.setY(contentY - webView.getScrollY() + offset[1]);
 
@@ -89,9 +94,13 @@ public class PaymentElementPlugin extends Plugin {
             globalLayoutListener = () -> {
                 if (paymentElement != null) {
                     int[] off = getWebViewOffset(webView);
-                    paymentElement.setX(contentX - webView.getScrollX() + off[0]);
-                    paymentElement.setY(contentY - webView.getScrollY() + off[1]);
-                    updateVisibility(paymentElement, webView);
+                    if (off[0] != lastOffsetX || off[1] != lastOffsetY) {
+                        lastOffsetX = off[0];
+                        lastOffsetY = off[1];
+                        paymentElement.setX(contentX - webView.getScrollX() + off[0]);
+                        paymentElement.setY(contentY - webView.getScrollY() + off[1]);
+                        updateVisibility(paymentElement, webView);
+                    }
                 }
             };
             webView.getViewTreeObserver().addOnGlobalLayoutListener(globalLayoutListener);
@@ -141,6 +150,8 @@ public class PaymentElementPlugin extends Plugin {
             paymentElement.setLayoutParams(params);
 
             int[] offset = getWebViewOffset(webView);
+            lastOffsetX = offset[0];
+            lastOffsetY = offset[1];
             paymentElement.setX(contentX - webView.getScrollX() + offset[0]);
             paymentElement.setY(contentY - webView.getScrollY() + offset[1]);
 
@@ -184,6 +195,9 @@ public class PaymentElementPlugin extends Plugin {
             if (webView != null) webView.getViewTreeObserver().removeOnGlobalLayoutListener(globalLayoutListener);
             globalLayoutListener = null;
         }
+
+        lastOffsetX = -1;
+        lastOffsetY = -1;
     }
 
     private void updateVisibility(View view, WebView webView) {

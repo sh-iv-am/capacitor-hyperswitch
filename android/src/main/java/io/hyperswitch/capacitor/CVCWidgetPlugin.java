@@ -20,6 +20,9 @@ public class CVCWidgetPlugin extends Plugin {
     private int contentX;
     private int contentY;
 
+    private int lastOffsetX = -1;
+    private int lastOffsetY = -1;
+
     private View.OnScrollChangeListener scrollListener;
     private ViewTreeObserver.OnGlobalLayoutListener globalLayoutListener;
 
@@ -67,6 +70,8 @@ public class CVCWidgetPlugin extends Plugin {
             parent.addView(view, params);
 
             int[] offset = getWebViewOffset(webView);
+            lastOffsetX = offset[0];
+            lastOffsetY = offset[1];
             view.setX(contentX - webView.getScrollX() + offset[0]);
             view.setY(contentY - webView.getScrollY() + offset[1]);
 
@@ -88,9 +93,13 @@ public class CVCWidgetPlugin extends Plugin {
             globalLayoutListener = () -> {
                 if (cvcWidget != null) {
                     int[] off = getWebViewOffset(webView);
-                    cvcWidget.setX(contentX - webView.getScrollX() + off[0]);
-                    cvcWidget.setY(contentY - webView.getScrollY() + off[1]);
-                    updateVisibility(cvcWidget, webView);
+                    if (off[0] != lastOffsetX || off[1] != lastOffsetY) {
+                        lastOffsetX = off[0];
+                        lastOffsetY = off[1];
+                        cvcWidget.setX(contentX - webView.getScrollX() + off[0]);
+                        cvcWidget.setY(contentY - webView.getScrollY() + off[1]);
+                        updateVisibility(cvcWidget, webView);
+                    }
                 }
             };
             webView.getViewTreeObserver().addOnGlobalLayoutListener(globalLayoutListener);
@@ -140,6 +149,8 @@ public class CVCWidgetPlugin extends Plugin {
             cvcWidget.setLayoutParams(params);
 
             int[] offset = getWebViewOffset(webView);
+            lastOffsetX = offset[0];
+            lastOffsetY = offset[1];
             cvcWidget.setX(contentX - webView.getScrollX() + offset[0]);
             cvcWidget.setY(contentY - webView.getScrollY() + offset[1]);
 
@@ -183,6 +194,9 @@ public class CVCWidgetPlugin extends Plugin {
             if (webView != null) webView.getViewTreeObserver().removeOnGlobalLayoutListener(globalLayoutListener);
             globalLayoutListener = null;
         }
+
+        lastOffsetX = -1;
+        lastOffsetY = -1;
     }
 
     private void updateVisibility(View view, WebView webView) {

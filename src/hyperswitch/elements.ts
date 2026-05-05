@@ -145,6 +145,12 @@ export function createPaymentElement(plugin: HyperswitchPlugin, options?: Paymen
       plugin.createElement({ type: 'paymentElement', createOptions: options as unknown as JSONValue ?? {} });
       startObserving(el);
       plugin.elementMount({ selector });
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          syncNativeView();
+          setTimeout(() => syncNativeView(), 100);
+        });
+      });
     },
     focus(): void {
       plugin.elementFocus();
@@ -164,7 +170,9 @@ export function createCvcWidget(
 ): CvcWidget {
   let mountedElement: HTMLElement | null = null;
   let resizeObserver: ResizeObserver | null = null;
+  let mutationObserver: MutationObserver | null = null;
   let intersectionObserver: IntersectionObserver | null = null;
+  let onResize: (() => void) | null = null;
   const eventHandlers: Map<string, Array<(data?: PaymentEventData) => void>> = new Map();
 
   function syncNativeView(): void {
@@ -175,8 +183,14 @@ export function createCvcWidget(
   function stopObserving(): void {
     resizeObserver?.disconnect();
     resizeObserver = null;
+    mutationObserver?.disconnect();
+    mutationObserver = null;
     intersectionObserver?.disconnect();
     intersectionObserver = null;
+    if (onResize) {
+      window.removeEventListener('resize', onResize);
+      onResize = null;
+    }
   }
 
   // Set up event listener for CVC widget events
@@ -220,12 +234,24 @@ export function createCvcWidget(
       });
       resizeObserver = new ResizeObserver(() => syncNativeView());
       resizeObserver.observe(el);
+      mutationObserver = new MutationObserver(() => syncNativeView());
+      if (el.parentElement) {
+        mutationObserver.observe(el.parentElement, { childList: true, subtree: false });
+      }
       intersectionObserver = observeVisibility(
         el,
         () => cvcWidgetPlugin.show(),
         () => cvcWidgetPlugin.hide(),
       );
+      onResize = () => syncNativeView();
+      window.addEventListener('resize', onResize);
       plugin.elementMount({ selector });
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          syncNativeView();
+          setTimeout(() => syncNativeView(), 100);
+        });
+      });
     },
     unmount(): void {
       stopObserving();
