@@ -67,6 +67,10 @@ public class HyperswitchImpl {
     private PaymentSession paymentSession;
     private String sdkAuth;
 
+    private String customBackendUrl;
+
+    private String customLoggingUrl;
+
     // Event forwarding (set by HyperswitchPlugin via setEventListener)
     private NativeEventListener eventListener;
 
@@ -135,11 +139,11 @@ public class HyperswitchImpl {
 
         Logger.info("Hyperswitch", "Initialized with publishableKey: " + publishableKey);
 
-        String customBackendUrl = customEndpointConfig != null ?
+        customBackendUrl = customEndpointConfig != null ?
                 customEndpointConfig.getOverrideCustomBackendEndpoint() != null ?
                         customEndpointConfig.getOverrideCustomBackendEndpoint() : customEndpointConfig.getCustomEndpoint() : null;
 
-        String customLoggingUrl = customEndpointConfig != null ?
+        customLoggingUrl = customEndpointConfig != null ?
                 customEndpointConfig.getOverrideCustomLoggingEndpoint() != null ?
                         customEndpointConfig.getOverrideCustomLoggingEndpoint() : customEndpointConfig.getCustomEndpoint() : null;
 
@@ -392,8 +396,10 @@ public class HyperswitchImpl {
         }
 
         Map<String, Object> configMap = new HashMap<>();
-        configMap.put("sdkAuthorization", sdkAuth);
         configMap.put("publishableKey", paymentSession.getPublishableKey());
+        configMap.put("sdkAuthorization", sdkAuth);
+        configMap.put("customBackendUrl", customBackendUrl);
+        configMap.put("customLoggingUrl", customLoggingUrl);
         configMap.put("from", "rn");
         configMap.put("type", "payment");
 
