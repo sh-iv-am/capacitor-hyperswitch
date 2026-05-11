@@ -44,6 +44,29 @@ public class HyperswitchPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private let impl = HyperswitchImpl.shared
 
+    // ── Plugin lifecycle ───────────────────────────────────────────────────────
+
+    /// Registers a NativeEventListener so that widget events (FORM_STATUS, CVC_STATUS, etc.)
+    /// are forwarded to the JS layer via notifyListeners on a source-specific channel.
+    override public func load() {
+        impl.setEventListener { [weak self] type, payload, source in
+            guard let self = self else { return }
+            let channel: String
+            switch source {
+            case "paymentElement": channel = "paymentElementEvent"
+            case "cvcWidget": channel = "cvcWidgetEvent"
+            default: channel = "paymentEvent"
+            }
+            self.notifyListeners(
+                channel,
+                data: [
+                    "type": type,
+                    "payload": payload,
+                ]
+            )
+        }
+    }
+
     // ── Init ───────────────────────────────────────────────────────────────────
 
     @objc func `init`(_ call: CAPPluginCall) {

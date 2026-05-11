@@ -29,6 +29,22 @@ public class HyperswitchImpl {
     public typealias VoidCallback = () -> Void
     public typealias HandlerReadyCallback = (String) -> Void
 
+    /// Fires when a native widget emits an event (e.g. CVC_STATUS, FORM_STATUS).
+    public typealias NativeEventListener = (_ type: String, _ payload: [String: Any], _ source: String) -> Void
+
+    // ── Event forwarding ───────────────────────────────────────────────────────
+
+    private var eventListener: NativeEventListener?
+
+    /// Called by HyperswitchPlugin.load() to receive widget events for notifyListeners.
+    func setEventListener(_ listener: @escaping NativeEventListener) {
+        self.eventListener = listener
+    }
+
+    private func fireEvent(type: String, payload: [String: Any]?, source: String) {
+        eventListener?(type, payload ?? [:], source)
+    }
+
     // ── Container Registration ─────────────────────────────────────────────────
     func registerPaymentElementContainer(_ container: PaymentElementContainer?) {
         self.paymentElementContainer = container
@@ -53,7 +69,8 @@ public class HyperswitchImpl {
         self.paymentSession = PaymentSession(
             publishableKey: publishableKey,
             profileId: profileId ?? "",
-            customBackendUrl: customConfig?["overrideCustomBackendEndpoint"] as? String ?? customConfig?["customEndpoint"] as? String ?? nil,
+            customBackendUrl: customConfig?["overrideCustomBackendEndpoint"] as? String ?? customConfig?["customEndpoint"] as? String
+                ?? nil,
             customLogUrl: customConfig?["overrideCustomLoggingEndpoint"] as? String ?? customConfig?["customEndpoint"] as? String ?? nil
         )
     }
@@ -97,6 +114,9 @@ public class HyperswitchImpl {
 
         DispatchQueue.main.async {
             let lower = type.lowercased()
+            var configMap = createOptions ?? [:]
+            let subscribedEvents = Self.extractAndRemoveSubscribedEvents(&configMap)
+
             if lower == "paymentelement" || lower == "payment" {
                 guard let container = self.paymentElementContainer else {
                     print("[Hyperswitch] PaymentElement container not registered — call create() first")
@@ -104,8 +124,10 @@ public class HyperswitchImpl {
                 }
                 container.attach(
                     paymentSession: paymentSession,
-                    configuration: createOptions ?? [:]
-                )
+                    configuration: configMap
+                ) { [weak self] builder in
+                    self?.bindPaymentElementEvents(builder: builder, subscribed: subscribedEvents, source: "paymentElement")
+                }
                 print("[Hyperswitch] PaymentElement created and placed successfully")
 
             } else if lower == "cvcwidget" || lower == "cvc" {
@@ -113,10 +135,57 @@ public class HyperswitchImpl {
                     print("[Hyperswitch] CVCWidget container not registered — call create() first")
                     return
                 }
-                container.attach(paymentSession: paymentSession, configuration: createOptions ?? [:])
+                container.attach(
+                    paymentSession: paymentSession,
+                    configuration: configMap
+                ) { [weak self] builder in
+                    builder.on(.cvcStatus) { event in
+                        self?.fireEvent(type: PaymentEventType.cvcStatus.rawValue, payload: event.payload, source: "cvcWidget")
+                    }
+                }
                 print("[Hyperswitch] CVCWidget created and placed successfully")
             }
         }
+    }
+
+    private func bindPaymentElementEvents(
+        builder: PaymentEventSubscriptionBuilder,
+        subscribed: [String],
+        source: String
+    ) {
+        if subscribed.contains(PaymentEventType.formStatus.rawValue) {
+            builder.on(.formStatus) { [weak self] event in
+                self?.fireEvent(type: PaymentEventType.formStatus.rawValue, payload: event.payload, source: source)
+            }
+        }
+        if subscribed.contains(PaymentEventType.paymentMethodStatus.rawValue) {
+            builder.on(.paymentMethodStatus) { [weak self] event in
+                self?.fireEvent(type: PaymentEventType.paymentMethodStatus.rawValue, payload: event.payload, source: source)
+            }
+        }
+        if subscribed.contains(PaymentEventType.paymentMethodInfoCard.rawValue) {
+            builder.on(.paymentMethodInfoCard) { [weak self] event in
+                self?.fireEvent(type: PaymentEventType.paymentMethodInfoCard.rawValue, payload: event.payload, source: source)
+            }
+        }
+        if subscribed.contains(PaymentEventType.paymentMethodInfoBillingAddress.rawValue) {
+            builder.on(.paymentMethodInfoBillingAddress) { [weak self] event in
+                self?.fireEvent(type: PaymentEventType.paymentMethodInfoBillingAddress.rawValue, payload: event.payload, source: source)
+            }
+        }
+
+        if subscribed.contains(PaymentEventType.cvcStatus.rawValue) {
+            builder.on(.cvcStatus) { [weak self] event in
+                self?.fireEvent(type: PaymentEventType.paymentMethodInfoBillingAddress.rawValue, payload: event.payload, source: source)
+            }
+        }
+    }
+
+    private static func extractAndRemoveSubscribedEvents(_ map: inout [String: Any]) -> [String] {
+        guard let raw = map.removeValue(forKey: "subscribedEvents") else { return [] }
+        if let arr = raw as? [String] { return arr }
+        if let arr = raw as? [Any] { return arr.compactMap { $0 as? String } }
+        return []
     }
 
     // ── updateIntent ───────────────────────────────────────────────────────────
@@ -127,15 +196,26 @@ public class HyperswitchImpl {
         onError: @escaping ErrorCallback
     ) {
         guard let paymentSession = self.paymentSession else {
-                    onError("elements() must be called first")
-                    return
-                }
-        
-        paymentSession.updateIntent { result in
-                    result(sdkAuthorization)
-                }
-    }
+            onError("elements() must be called first")
+            return
+        }
 
+        paymentSession.updateIntent(
+            authorizationProvider: { authorizationProvider in
+                authorizationProvider(sdkAuthorization)
+            },
+            completion: { result in
+                switch result {
+                case .success:
+                    onResult(["type": "success", "message": "Success"])
+                case .cancelled:
+                    onResult(["type": "cancelled", "message": "Cancelled"])
+                case .failure(let error):
+                    onResult(["type": "failure", "message": "\(error.localizedDescription)"])
+                }
+            }
+        )
+    }
     // ── initPaymentSession (legacy) ────────────────────────────────────────────
 
     func initPaymentSession(
@@ -165,7 +245,7 @@ public class HyperswitchImpl {
             return
         }
 
-        var params: [String: Any] = sheetOptions ?? [:]
+        let params: [String: Any] = sheetOptions ?? [:]
 
         DispatchQueue.main.async {
             paymentSession.presentPaymentSheetWithParams(viewController: viewController, params: params) {
@@ -292,14 +372,16 @@ public class HyperswitchImpl {
         guard let data = data else { return [:] }
         if let dict = data as? [String: Any] {
             if let jsonData = try? JSONSerialization.data(withJSONObject: dict),
-               let jsonString = String(data: jsonData, encoding: .utf8) {
+                let jsonString = String(data: jsonData, encoding: .utf8)
+            {
                 return ["data": jsonString]
             }
             return ["data": dict]
         }
         if let arr = data as? [Any] {
             if let jsonData = try? JSONSerialization.data(withJSONObject: arr),
-               let jsonString = String(data: jsonData, encoding: .utf8) {
+                let jsonString = String(data: jsonData, encoding: .utf8)
+            {
                 return ["data": jsonString]
             }
         }
@@ -309,9 +391,9 @@ public class HyperswitchImpl {
     private func paymentResultToDict(_ result: PaymentResult) -> [String: Any] {
         switch result {
         case .completed(let data):
-            return ["type": "completed", "message": data ?? ""]
+            return ["type": "completed", "message": data]
         case .canceled(let data):
-            return ["type": "canceled", "message": data ?? ""]
+            return ["type": "canceled", "message": data]
         case .failed(let error):
             return ["type": "failed", "message": error.localizedDescription]
         @unknown default:
