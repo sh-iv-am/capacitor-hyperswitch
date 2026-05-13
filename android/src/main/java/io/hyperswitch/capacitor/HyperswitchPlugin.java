@@ -29,6 +29,7 @@ public class HyperswitchPlugin extends Plugin {
             String channel = switch (source) {
                 case "paymentElement" -> "paymentElementEvent";
                 case "cvcWidget" -> "cvcWidgetEvent";
+                case "onPaymentResultEvent" -> "onPaymentResultEvent";
                 default -> "paymentEvent";
             };
             notifyListeners(channel, data);
@@ -156,10 +157,25 @@ public class HyperswitchPlugin extends Plugin {
     @PluginMethod
     public void getCustomerLastUsedPaymentMethodData(PluginCall call) {
         String handlerId = call.getString("handlerId");
-        if (handlerId == null || handlerId.isEmpty()) { call.reject("handlerId is required"); return; }
-        call.resolve(implementation.getCustomerLastUsedPaymentMethodData(handlerId));
-    }
+        if (handlerId == null || handlerId.isEmpty()) {
+            call.reject("handlerId is required");
+            return;
+        }
 
+        implementation.getCustomerLastUsedPaymentMethodData(handlerId, new HyperswitchImpl.PaymentResultCallback() {
+            @Override
+            public void onResult(JSObject result) {
+                call.setKeepAlive(false);
+                call.resolve(result);
+            }
+
+            @Override
+            public void onError(String message) {
+                call.setKeepAlive(false);
+                call.reject(message);
+            }
+        });
+    }
     @PluginMethod
     public void presentPaymentSheet(PluginCall call) {
         call.setKeepAlive(true);

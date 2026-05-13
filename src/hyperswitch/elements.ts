@@ -1,19 +1,18 @@
 import type {
   Elements,
   HyperswitchPlugin,
-  JSONValue,
   PaymentElement,
   PaymentEventData,
   PaymentResult,
-  UpdateIntentResult,
   CvcWidget,
-  PaymentSessionHandler,
   PaymentSheetOptions,
   CvcWidgetOptions,
+  PaymentSessionConfiguration,
+  CustomerSavedPaymentMethodsSession,
 } from './definitions';
 import { paymentElementPlugin } from './views/payment-element/index';
 import { cvcWidgetPlugin } from './views/cvc-widget/index';
-import { createPaymentSessionHandler } from './payment-session-handler';
+import { createPaymentSessionHandler } from './PaymentSession';
 
 function getContentPosition(el: HTMLElement): { x: number; y: number; width: number; height: number } {
   const rect = el.getBoundingClientRect();
@@ -25,6 +24,20 @@ function getContentPosition(el: HTMLElement): { x: number; y: number; width: num
   };
 }
 
+function toPaymentResult(eventData: PaymentEventData): PaymentResult {
+  const message = eventData.payload['message'];
+
+  switch (eventData.payload['type']) {
+    case 'completed':
+      return { type: 'completed', message };
+    case 'canceled':
+      return { type: 'canceled', message };
+    case 'failed':
+      return { type: 'failed', message };
+    default:
+      throw new Error(`Invalid payment result type: "${eventData.payload['type']}"`);
+  }
+}
 /** Wire up an IntersectionObserver that shows/hides the native view when the
  *  placeholder enters or leaves the viewport (or is covered by an overlay). */
 function observeVisibility(el: HTMLElement, onVisible: () => void, onHidden: () => void): IntersectionObserver {
@@ -49,6 +62,7 @@ export function createPaymentElement(plugin: HyperswitchPlugin, options?: Paymen
   let resizeObserver: ResizeObserver | null = null;
   let mutationObserver: MutationObserver | null = null;
   let intersectionObserver: IntersectionObserver | null = null;
+  let onWindowResize: (() => void) | null = null;
 
   function syncNativeView(): void {
     if (!mountedElement) return;
@@ -70,6 +84,8 @@ export function createPaymentElement(plugin: HyperswitchPlugin, options?: Paymen
       () => paymentElementPlugin.show(),
       () => paymentElementPlugin.hide(),
     );
+    onWindowResize = () => syncNativeView();
+    window.addEventListener('resize', onWindowResize);
   }
 
   function stopObserving(): void {
@@ -79,6 +95,10 @@ export function createPaymentElement(plugin: HyperswitchPlugin, options?: Paymen
     mutationObserver = null;
     intersectionObserver?.disconnect();
     intersectionObserver = null;
+    if (onWindowResize) {
+      window.removeEventListener('resize', onWindowResize);
+      onWindowResize = null;
+    }
   }
 
   return {
@@ -92,13 +112,19 @@ export function createPaymentElement(plugin: HyperswitchPlugin, options?: Paymen
         }
       });
     },
+    onPaymentResult(handler?: (data: PaymentResult) => void): void {
+      if (!handler) return;
+      plugin.addListener('onPaymentResultEvent', (eventData: PaymentEventData) => {
+        handler(toPaymentResult(eventData));
+      });
+    },
     collapse(): void {
       plugin.elementCollapse();
     },
     blur(): void {
       plugin.elementBlur();
     },
-    update(options: JSONValue): void {
+    update(options: Record<string, Object>): void {
       plugin.elementUpdate({ updateOptions: options });
     },
     destroy(): void {
@@ -122,7 +148,7 @@ export function createPaymentElement(plugin: HyperswitchPlugin, options?: Paymen
       mountedElement = el;
       // Create the native view first, then bind it via createElement
       paymentElementPlugin.create({ ...getContentPosition(el) });
-      plugin.createElement({ type: 'paymentElement', createOptions: (options as unknown as JSONValue) ?? {} });
+      plugin.createElement({ type: 'paymentElement', createOptions: options ?? {} });
       startObserving(el);
       plugin.elementMount({ selector });
     },
@@ -132,7 +158,7 @@ export function createPaymentElement(plugin: HyperswitchPlugin, options?: Paymen
     clear(): void {
       plugin.elementClear();
     },
-    async confirmPayment(options?: { confirmParams?: JSONValue }): Promise<PaymentResult> {
+    async confirmPayment(options?: { confirmParams?: Record<string, Object> }): Promise<PaymentResult> {
       return plugin.confirmPayment({ confirmParams: options?.confirmParams ?? {} });
     },
   };
@@ -195,7 +221,7 @@ export function createCvcWidget(plugin: HyperswitchPlugin, options?: CvcWidgetOp
       }
       plugin.createElement({
         type: 'cvcWidget',
-        createOptions: cvcCreateOptions as unknown as JSONValue,
+        createOptions: cvcCreateOptions,
       });
       resizeObserver = new ResizeObserver(() => syncNativeView());
       resizeObserver.observe(el);
@@ -251,12 +277,12 @@ export function createElements(plugin: HyperswitchPlugin): Elements {
   return {
     create,
 
-    async updateIntent(intentResolver: () => Promise<string>): Promise<UpdateIntentResult> {
-      const sdkAuthorization = await intentResolver();
-      return plugin.updateIntent({ sdkAuthorization });
+    async updateIntent(intentResolver: () => Promise<PaymentSessionConfiguration>): Promise<void> {
+      const paymentSessionConfiguration = await intentResolver();
+      return plugin.updateIntent(paymentSessionConfiguration);
     },
 
-    async getCustomerSavedPaymentMethods(): Promise<PaymentSessionHandler> {
+    async getCustomerSavedPaymentMethods(): Promise<CustomerSavedPaymentMethodsSession> {
       const { handlerId } = await plugin.getCustomerSavedPaymentMethods();
       return createPaymentSessionHandler(plugin, handlerId);
     },

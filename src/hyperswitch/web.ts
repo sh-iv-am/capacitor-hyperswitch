@@ -1,6 +1,16 @@
 import { WebPlugin } from '@capacitor/core';
 
-import type { HyperConfig, HyperswitchPlugin, JSONValue, PaymentResult, UpdateIntentResult } from './definitions';
+import type {
+  PaymentMethodData,
+  PaymentMethodListData,
+  CvcWidgetOptions,
+  HyperswitchConfiguration,
+  HyperswitchPlugin,
+  PaymentElementOptions,
+  PaymentResult,
+  PaymentSessionConfiguration,
+  PaymentSheetOptions,
+} from './definitions';
 
 const IFRAME_SRC = 'https://beta.hyperswitch.io/mobile/1.10.0/index.html';
 const TARGET_ORIGIN = 'https://beta.hyperswitch.io';
@@ -23,19 +33,22 @@ const pendingElements: Map<string, { iframeType: string }> = new Map();
 const mountedIframes: Map<string, HTMLIFrameElement> = new Map();
 
 export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
-  async init(config: HyperConfig): Promise<void> {
+  async init(config: HyperswitchConfiguration): Promise<void> {
     console.log('INIT', config);
     defaultProps.publishableKey = config.publishableKey;
   }
 
-  async elements(options: { elementsOptions: JSONValue }): Promise<{ handlerId: string }> {
+  async elements(options: { elementsOptions: PaymentSessionConfiguration }): Promise<{ handlerId: string }> {
     console.log('ELEMENTS', options);
     const sdkAuth = options?.elementsOptions?.['sdkAuthorization'] as string | undefined;
     if (sdkAuth) defaultProps.sdkAuthorization = sdkAuth;
     return { handlerId: 'web-stub' };
   }
 
-  async createElement(options: { type: string; createOptions: JSONValue }): Promise<void> {
+  async createElement(options: {
+    type: 'paymentElement' | 'cvcWidget' | 'cvc';
+    createOptions: PaymentElementOptions | CvcWidgetOptions;
+  }): Promise<void> {
     console.log('CREATE_ELEMENT', options);
     const iframeType = options.type === 'cvcWidget' || options.type === 'cvc' ? 'cvcWidget' : 'widgetPaymentSheet';
     pendingElements.set(options.type, { iframeType });
@@ -86,12 +99,11 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
     iframe.src = IFRAME_SRC;
   }
 
-  async updateIntent(options: { sdkAuthorization: string }): Promise<UpdateIntentResult> {
+  async updateIntent(options: { sdkAuthorization: string }): Promise<void> {
     console.log('UPDATE_INTENT', options);
-    return { type: 'success' };
   }
 
-  async initPaymentSession(options: { paymentSessionOptions: JSONValue }): Promise<void> {
+  async initPaymentSession(options: { paymentSessionOptions: PaymentSessionConfiguration }): Promise<void> {
     console.log('INIT_PAYMENT_SESSION', options);
     defaultProps.sdkAuthorization = options.paymentSessionOptions['sdkAuthorization'] as string;
   }
@@ -102,19 +114,27 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
     return { handlerId: 'web-stub' };
   }
 
-  async getCustomerSavedPaymentMethodData(options: { handlerId: string }): Promise<JSONValue> {
+  async getCustomerSavedPaymentMethodData(options: { handlerId: string }): Promise<PaymentMethodListData> {
     console.log('GET_CUSTOMER_SAVED_PAYMENT_METHOD_DATA', options);
-    return {};
+    return {
+      data: [],
+      error: 'Not available on Web',
+    };
   }
-
-  async getCustomerDefaultSavedPaymentMethodData(options: { handlerId: string }): Promise<JSONValue> {
+  async getCustomerDefaultSavedPaymentMethodData(options: { handlerId: string }): Promise<PaymentMethodData> {
     console.log('GET_CUSTOMER_DEFAULT_SAVED_PAYMENT_METHOD_DATA', options);
-    return {};
+    return {
+      data: null,
+      error: 'Not available on Web',
+    };
   }
 
-  async getCustomerLastUsedPaymentMethodData(options: { handlerId: string }): Promise<JSONValue> {
+  async getCustomerLastUsedPaymentMethodData(options: { handlerId: string }): Promise<PaymentMethodData> {
     console.log('GET_CUSTOMER_LAST_USED_PAYMENT_METHOD_DATA', options);
-    return {};
+    return {
+      data: null,
+      error: 'Not available on Web',
+    };
   }
 
   async confirmWithCustomerDefaultPaymentMethod(options: { handlerId: string }): Promise<PaymentResult> {
@@ -127,7 +147,7 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
     return { type: 'failed', message: 'Run on actual device' };
   }
 
-  async presentPaymentSheet(options: { sheetOptions: JSONValue }): Promise<PaymentResult> {
+  async presentPaymentSheet(options: { sheetOptions: PaymentSheetOptions }): Promise<PaymentResult> {
     console.log('PRESENT_PAYMENT_SHEET', options);
 
     const CONTAINER_ID = 'hyperswitch-container';
@@ -197,7 +217,7 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
     });
   }
 
-  async confirmPayment(options: { confirmParams: JSONValue }): Promise<PaymentResult> {
+  async confirmPayment(options: { confirmParams: Record<string, Object> }): Promise<PaymentResult> {
     console.log('CONFIRM_PAYMENT', options);
     return { type: 'failed', message: 'Run on actual device' };
   }
@@ -213,7 +233,7 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
     console.log('ELEMENT_BLUR');
   }
 
-  async elementUpdate(options: { updateOptions: JSONValue }): Promise<void> {
+  async elementUpdate(options: { updateOptions: Record<string, Object> }): Promise<void> {
     console.log('ELEMENT_UPDATE', options);
   }
 
@@ -234,7 +254,7 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
   // addListener is provided by WebPlugin base class; this override satisfies the
   // HyperswitchPlugin interface typing for the 'paymentEvent' event.
   addListener(
-    event: 'paymentElementEvent' | 'cvcWidgetEvent',
+    event: 'paymentElementEvent' | 'cvcWidgetEvent' | 'onPaymentResultEvent',
     handler: (data: import('./definitions').PaymentEventData) => void,
   ): Promise<{ remove: () => Promise<void> }> {
     return super.addListener(event, handler);

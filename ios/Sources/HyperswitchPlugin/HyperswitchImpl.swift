@@ -323,8 +323,21 @@ public class HyperswitchImpl {
             print("[Hyperswitch] No handler for id: \(handlerId)")
             return [:]
         }
-        let data = handler.getCustomerLastUsedPaymentMethodData()
-        return serializePaymentMethodData(data)
+        let result = handler.getCustomerLastUsedPaymentMethodData()
+        switch result {
+            case .success(let paymentMethod):
+                if let jsonData = try? JSONEncoder().encode(paymentMethod),
+                   let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                    return ["data": dict]
+                }
+                return ["error": ["code": "ERROR", "message": "Failed to serialize PaymentMethod"]]
+            case .failure(let pmError):
+                if let jsonData = try? JSONEncoder().encode(pmError),
+                   let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
+                    return ["error": dict]
+                }
+                return ["error": ["code": pmError.code, "message": pmError.message]]
+        }
     }
 
     // ── Handler-scoped confirm methods ─────────────────────────────────────────

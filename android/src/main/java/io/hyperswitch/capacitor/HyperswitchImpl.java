@@ -1,5 +1,6 @@
 package io.hyperswitch.capacitor;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Logger;
@@ -10,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import io.hyperswitch.CvcWidgetEvents;
 import io.hyperswitch.PaymentEvents;
@@ -22,12 +24,13 @@ import io.hyperswitch.paymentsession.PaymentSessionHandler;
 import io.hyperswitch.paymentsheet.PaymentResult;
 import io.hyperswitch.sdk.Elements;
 import io.hyperswitch.sdk.Hyperswitch;
-import io.hyperswitch.utils.ConversionUtils;
-import io.hyperswitch.view.CVCWidget;
-import io.hyperswitch.view.PaymentElement;
 import io.hyperswitch.sdk.HyperswitchBoundElement;
 import io.hyperswitch.sdk.HyperswitchInstance;
 import io.hyperswitch.sdk.PaymentSession;
+import io.hyperswitch.utils.ConversionUtils;
+import io.hyperswitch.view.CVCWidget;
+import io.hyperswitch.view.PaymentElement;
+import io.hyperswitch.view.PaymentResultListener;
 import kotlin.Result;
 import kotlin.Unit;
 import kotlin.coroutines.Continuation;
@@ -36,43 +39,44 @@ import kotlin.coroutines.EmptyCoroutineContext;
 
 public class HyperswitchImpl {
 
-
     // ── Singleton ──────────────────────────────────────────────────────────────────────────────
 
-    private static HyperswitchImpl instance;
+    private static volatile HyperswitchImpl instance;
 
     public static HyperswitchImpl getInstance() {
         if (instance == null) {
-            instance = new HyperswitchImpl();
+            synchronized (HyperswitchImpl.class) {
+                if (instance == null) {
+                    instance = new HyperswitchImpl();
+                }
+            }
         }
         return instance;
     }
 
     // ── State ──────────────────────────────────────────────────────────────────────────────────
 
-    private AppCompatActivity activity;
-    private HyperswitchInstance hyperswitchInstance;
+    private volatile AppCompatActivity activity;
+    private volatile HyperswitchInstance hyperswitchInstance;
 
     // Elements API state
-    private Elements elements;
-    private final Map<String, PaymentSessionHandler> handlerRegistry = new HashMap<>();
-    private HyperswitchBoundElement paymentElementBound;
-    private HyperswitchBoundElement cvcWidgetBound;
+    private volatile Elements elements;
+    private final Map<String, PaymentSessionHandler> handlerRegistry = new ConcurrentHashMap<>();
+    private volatile HyperswitchBoundElement paymentElementBound;
+    private volatile HyperswitchBoundElement cvcWidgetBound;
 
     // SDK view references (set by PaymentElementPlugin / CVCWidgetPlugin)
-    private PaymentElement paymentElementView;
-    private CVCWidget cvcWidgetView;
+    private volatile PaymentElement paymentElementView;
+    private volatile CVCWidget cvcWidgetView;
 
     // Legacy PaymentSession (used by presentPaymentSheet)
-    private PaymentSession paymentSession;
-    private String sdkAuth;
-
-    private String customBackendUrl;
-
-    private String customLoggingUrl;
+    private volatile PaymentSession paymentSession;
+    private volatile String sdkAuth;
+    private volatile String customBackendUrl;
+    private volatile String customLoggingUrl;
 
     // Event forwarding (set by HyperswitchPlugin via setEventListener)
-    private NativeEventListener eventListener;
+    private volatile NativeEventListener eventListener;
 
     /** Called by HyperswitchPlugin.load() to receive widget events for notifyListeners. */
     public void setEventListener(NativeEventListener listener) {
@@ -202,10 +206,17 @@ public class HyperswitchImpl {
 
         sdkAuth = sdkAuthorization;
         // Create Elements session using the callback-based overload
-        paymentSession.initPaymentSession(sdkAuthorization);
 
         PaymentSessionConfiguration sessionConfig = new PaymentSessionConfiguration(sdkAuthorization);
 
+        hyperswitchInstance.initPaymentSession(
+                sessionConfig,
+                session -> {
+                    this.paymentSession = session;
+                    Logger.info("Hyperswitch", "initPaymentSession ready");
+                    return null;
+                }
+        );
         // Create Elements session using the callback-based overload
         hyperswitchInstance.elements(sessionConfig, elementsInstance -> {
             this.elements = elementsInstance;
@@ -267,6 +278,12 @@ public class HyperswitchImpl {
                             return Unit.INSTANCE;
                         }
                 );
+                paymentElementBound.onPaymentResult(new PaymentResultListener() {
+                    @Override
+                    public void onPaymentResult(@NonNull PaymentResult paymentResult) {
+                        fireEvent("onPaymentResultEvent", jsObjectToMap(paymentResultToJSObject(paymentResult)), "onPaymentResultEvent");
+                    }
+                });
                 Logger.info("Hyperswitch", "PaymentElement bound with configuration Map");
 
             } else if ("cvcWidget".equalsIgnoreCase(type) || "cvc".equalsIgnoreCase(type)) {
@@ -293,8 +310,9 @@ public class HyperswitchImpl {
 
     /** Forwards a native widget event to JS via the registered NativeEventListener. */
     private void fireEvent(String type, Map<String, Object> payload, String source) {
-        if (eventListener != null) {
-            eventListener.onEvent(type, payload != null ? payload : new HashMap<>(), source);
+        NativeEventListener listener = this.eventListener;
+        if (listener != null) {
+            listener.onEvent(type, payload != null ? payload : new HashMap<>(), source);
         }
     }
 
@@ -614,69 +632,64 @@ public class HyperswitchImpl {
         return result;
     }
 
-    public JSObject getCustomerLastUsedPaymentMethodData(String handlerId) {
+    /**
+     * Fixed: was returning JSObject before the async callback fired (always empty).
+     * Now callback-based, consistent with the rest of the class.
+     */
+    public void getCustomerLastUsedPaymentMethodData(String handlerId, PaymentResultCallback callback) {
         Logger.info("Hyperswitch", "getCustomerLastUsedPaymentMethodData called, id=" + handlerId);
         JSObject result = new JSObject();
-
         if (handlerId == null || handlerId.isEmpty()) {
             Logger.warn("Hyperswitch", "Invalid handlerId: null or empty");
             result.put("error", "Invalid handlerId");
-            return result;
+            if (callback != null) callback.onResult(result);
+            return;
         }
 
         PaymentSessionHandler handler = handlerRegistry.get(handlerId);
         if (handler == null) {
             Logger.warn("Hyperswitch", "No handler found for id: " + handlerId);
             result.put("error", "Handler not found");
-            return result;
+            if (callback != null) callback.onResult(result);
+            return;
         }
 
-        try {
-            Method method = handler.getClass().getMethod("getCustomerLastUsedPaymentMethodData-d1pmJ48");
-            if (method == null) {
-                result.put("error", "Method not found");
-                return result;
-            }
-
-            Object data = method.invoke(handler);
-            if (data == null) {
-                Logger.warn("Hyperswitch", "Received null data from getCustomerLastUsedPaymentMethodData");
-                result.put("data", org.json.JSONObject.NULL);
-                return result;
-            }
-
-            if (data instanceof io.hyperswitch.paymentsession.PaymentMethod) {
-                Map<String, Object> map = ((io.hyperswitch.paymentsession.PaymentMethod) data).toMap();
-                if (map != null) {
-                    result.put("data", new org.json.JSONObject(map));
-                } else {
-                    result.put("error", "toMap() returned null");
+        handler.getCustomerLastUsedPaymentMethodData(
+                paymentMethod -> {
+                    try {
+                        Map<String, Object> map = paymentMethod.toMap();
+                        result.put("data", new org.json.JSONObject(map));
+                    } catch (Exception e) {
+                        Logger.error("Hyperswitch", "Error serializing PaymentMethod", e);
+                        result.put("error", "Serialization error: " + e.getMessage());
+                    }
+                    if (callback != null) callback.onResult(result);
+                    return null;
+                },
+                throwable -> {
+                    String msg = throwable != null ? throwable.getMessage() : "Unknown error";
+                    Logger.warn("Hyperswitch", "getCustomerLastUsedPaymentMethodData failed: " + msg);
+                    if (throwable instanceof io.hyperswitch.paymentsession.PMError) {
+                        try {
+                            result.put("error", new org.json.JSONObject(
+                                    ((io.hyperswitch.paymentsession.PMError) throwable).toMap()));
+                        } catch (Exception e) {
+                            result.put("error", msg);
+                        }
+                    } else {
+                        result.put("error", msg);
+                    }
+                    if (callback != null) callback.onResult(result);
+                    return null;
                 }
-            } else {
-                Logger.warn("Hyperswitch", "Unexpected data type: " + data.getClass().getName());
-                result.put("error", "Unexpected data type: " + data.getClass().getSimpleName());
-            }
-        } catch (NoSuchMethodException e) {
-            Logger.error("Hyperswitch", "Method not found in handler", e);
-            result.put("error", "Method not available: " + e.getMessage());
-        } catch (IllegalAccessException e) {
-            Logger.error("Hyperswitch", "Cannot access method", e);
-            result.put("error", "Access denied: " + e.getMessage());
-        } catch (java.lang.reflect.InvocationTargetException e) {
-            Throwable cause = e.getCause();
-            Logger.error("Hyperswitch", "Method invocation failed", cause != null ? cause : e);
-            result.put("error", "Invocation failed: " + (cause != null ? cause.getMessage() : e.getMessage()));
-        } catch (Exception e) {
-            Logger.error("Hyperswitch", "Unexpected error in getCustomerLastUsedPaymentMethodData", e);
-            result.put("error", "Unexpected error: " + e.getMessage());
-        }
-        return result;
+        );
     }
 
     public void confirmWithCustomerDefaultPaymentMethod(String handlerId, PaymentResultCallback callback) {
         Logger.info("Hyperswitch", "confirmWithCustomerDefaultPaymentMethod called, id=" + handlerId);
         PaymentSessionHandler handler = handlerRegistry.get(handlerId);
         if (handler == null) {
+
             if (callback != null) callback.onError("No handler for id: " + handlerId);
             return;
         }
@@ -707,14 +720,16 @@ public class HyperswitchImpl {
 
             @Override
             public void resumeWith(Object result) {
+
                 if (callback == null) return;
                 if (result instanceof Result.Failure) {
                     Throwable t = ((Result.Failure) result).exception;
-                    callback.onError(t != null ? t.getMessage() : "Unknown error");
+                    callback.onResult(paymentResultToJSObject(new PaymentResult.Failed(t)));
                 } else if (result instanceof PaymentResult) {
                     callback.onResult(paymentResultToJSObject((PaymentResult) result));
                 } else {
-                    callback.onError("Unexpected result type: " + (result != null ? result.getClass().getName() : "null"));
+                    Throwable t = new Throwable("Unexpected result type: " + (result != null ? result.getClass().getName() : "null"));
+                    callback.onResult(paymentResultToJSObject(new PaymentResult.Failed(t)));
                 }
             }
         };
@@ -744,6 +759,7 @@ public class HyperswitchImpl {
         }
         return js;
     }
+
 
     private Map<String, Object> jsObjectToMap(JSObject obj) {
         try {
