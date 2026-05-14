@@ -79,6 +79,22 @@ public class CVCWidgetPlugin extends Plugin {
             view.setX(contentX - webView.getScrollX() + offset[0]);
             view.setY(contentY - webView.getScrollY() + offset[1]);
 
+            // Force immediate layout to ensure proper positioning on first render
+            view.requestLayout();
+            view.forceLayout();
+
+            // Post layout adjustment to ensure correct positioning after initial measure
+            view.post(() -> {
+                if (cvcWidget != null) {
+                    int[] off = getWebViewOffset(webView);
+                    lastOffsetX = off[0];
+                    lastOffsetY = off[1];
+                    cvcWidget.setX(contentX - webView.getScrollX() + off[0]);
+                    cvcWidget.setY(contentY - webView.getScrollY() + off[1]);
+                    updateVisibility(cvcWidget, webView);
+                }
+            });
+
             updateVisibility(view, webView);
 
             cvcWidget = view;
@@ -156,6 +172,10 @@ public class CVCWidgetPlugin extends Plugin {
             lastOffsetY = offset[1];
             cvcWidget.setX(contentX - webView.getScrollX() + offset[0]);
             cvcWidget.setY(contentY - webView.getScrollY() + offset[1]);
+
+            // Force layout update
+            cvcWidget.requestLayout();
+            cvcWidget.forceLayout();
 
             updateVisibility(cvcWidget, webView);
 
