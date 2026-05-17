@@ -4,8 +4,7 @@ export type SubscriptionEvent =
   | 'PAYMENT_METHOD_INFO_CARD'
   | 'PAYMENT_METHOD_STATUS'
   | 'FORM_STATUS'
-  | 'PAYMENT_METHOD_INFO_ADDRESS'
-  | 'CVC_STATUS';
+  | 'PAYMENT_METHOD_INFO_BILLING_ADDRESS'
 
 export type Theme = 'Default' | 'Light' | 'Dark' | 'Minimal' | 'FlatMinimal';
 export type LayoutType = 'tabs' | 'accordion';
