@@ -1,9 +1,15 @@
 package io.hyperswitch.capacitor;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Logger;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -36,6 +42,7 @@ import kotlin.Unit;
 import kotlin.coroutines.Continuation;
 import kotlin.coroutines.CoroutineContext;
 import kotlin.coroutines.EmptyCoroutineContext;
+import kotlin.jvm.functions.Function1;
 
 public class HyperswitchImpl {
 
@@ -78,7 +85,9 @@ public class HyperswitchImpl {
     // Event forwarding (set by HyperswitchPlugin via setEventListener)
     private volatile NativeEventListener eventListener;
 
-    /** Called by HyperswitchPlugin.load() to receive widget events for notifyListeners. */
+    /**
+     * Called by HyperswitchPlugin.load() to receive widget events for notifyListeners.
+     */
     public void setEventListener(NativeEventListener listener) {
         this.eventListener = listener;
     }
@@ -87,30 +96,37 @@ public class HyperswitchImpl {
 
     public interface PaymentSheetCallback {
         void onResult(JSObject result);
+
         void onError(Exception e);
     }
 
     public interface PaymentResultCallback {
         void onResult(JSObject result);
+
         void onError(String message);
     }
 
     public interface ElementsCallback {
         void onReady(String handlerId);
+
         void onError(String message);
     }
 
     public interface InitPaymentSessionCallback {
         void onReady();
+
         void onError(String message);
     }
 
     public interface CustomerSavedPaymentMethodsCallback {
         void onReady(String handlerId);
+
         void onError(String message);
     }
 
-    /** Called when a payment widget emits a native event (e.g. CVC_STATUS, FORM_STATUS). */
+    /**
+     * Called when a payment widget emits a native event (e.g. CVC_STATUS, FORM_STATUS).
+     */
     public interface NativeEventListener {
         void onEvent(String type, Map<String, Object> payload, String source);
     }
@@ -150,20 +166,6 @@ public class HyperswitchImpl {
         customLoggingUrl = customEndpointConfig != null ?
                 customEndpointConfig.getOverrideCustomLoggingEndpoint() != null ?
                         customEndpointConfig.getOverrideCustomLoggingEndpoint() : customEndpointConfig.getCustomEndpoint() : null;
-
-        if(customBackendUrl != null && customLoggingUrl != null) {
-            paymentSession = new PaymentSession(
-                    activity,
-                    publishableKey,
-                    customBackendUrl,
-                    customLoggingUrl
-            );
-        } else {
-            paymentSession = new PaymentSession(
-                    activity,
-                    publishableKey
-            );
-        }
 
         hyperswitchInstance = Hyperswitch.INSTANCE.init(
                 activity,
@@ -222,11 +224,6 @@ public class HyperswitchImpl {
         unbindPaymentElement();
         unbindCvcWidget();
 
-        if (paymentSession == null) {
-            if (callback != null) callback.onError("Hyperswitch not initialised — call init() first");
-            return;
-        }
-
         String sdkAuthorization = elementsOptions != null
                 ? elementsOptions.getString("sdkAuthorization")
                 : null;
@@ -260,8 +257,8 @@ public class HyperswitchImpl {
     /**
      * Binds a native view to the Elements session.
      * Mirrors:
-     *   paymentElementBound = elements.bind(paymentElement, buildConfiguration()) { on(...) { } }
-     *   cvcWidgetBound      = elements.bind(cvcWidget, configMap) { on(CvcWidgetEvents.CvcStatus) { } }
+     * paymentElementBound = elements.bind(paymentElement, buildConfiguration()) { on(...) { } }
+     * cvcWidgetBound      = elements.bind(cvcWidget, configMap) { on(CvcWidgetEvents.CvcStatus) { } }
      */
     public void createElement(String type, JSObject createOptions) {
         Logger.info("Hyperswitch", "createElement called with type: " + type);
@@ -317,6 +314,21 @@ public class HyperswitchImpl {
                         fireEvent("onPaymentResultEvent", jsObjectToMap(paymentResultToJSObject(paymentResult)), "onPaymentResultEvent");
                     }
                 });
+                paymentElementBound.onPaymentConfirmButtonClick(
+                        (paymentRequestData, callback) -> {
+                            try {
+                                pendingConfirmButtonCallback = (Function1<Boolean, Unit>) callback;
+                                JSONObject jsonObject = new JSONObject();
+                                jsonObject.put("paymentMethodType", paymentRequestData.getPaymentMethodType());
+                                fireEvent("onPaymentConfirmButtonClickEvent",
+                                        ConversionUtils.readableMapToMap(ConversionUtils.convertJsonToMap(jsonObject)),
+                                        "onPaymentConfirmButtonClickEvent");
+                            } catch (JSONException e) {
+                                throw new RuntimeException(e);
+                            }
+                            return Unit.INSTANCE;
+                        }
+                );
                 Logger.info("Hyperswitch", "PaymentElement bound with configuration Map");
 
             } else if ("cvcWidget".equalsIgnoreCase(type) || "cvc".equalsIgnoreCase(type)) {
@@ -342,7 +354,9 @@ public class HyperswitchImpl {
         });
     }
 
-    /** Forwards a native widget event to JS via the registered NativeEventListener. */
+    /**
+     * Forwards a native widget event to JS via the registered NativeEventListener.
+     */
     private void fireEvent(String type, Map<String, Object> payload, String source) {
         NativeEventListener listener = this.eventListener;
         if (listener != null) {
@@ -384,6 +398,7 @@ public class HyperswitchImpl {
                 },
                 result -> {
                     Logger.info("Hyperswitch", "updateIntent result: " + result);
+
                     if (callback != null) {
                         JSObject js = new JSObject();
                         switch (result) {
@@ -414,7 +429,8 @@ public class HyperswitchImpl {
         Logger.info("Hyperswitch", "initPaymentSession called");
 
         if (paymentSession == null) {
-            if (callback != null) callback.onError("Hyperswitch not initialised — call init() first");
+            if (callback != null)
+                callback.onError("Hyperswitch not initialised — call init() first");
             return;
         }
 
@@ -425,7 +441,7 @@ public class HyperswitchImpl {
         sdkAuth = sdkAuthorization;
 
         paymentSession.initPaymentSession(sdkAuthorization != null ? sdkAuthorization : "");
-        
+
         hyperswitchInstance.initPaymentSession(
                 new PaymentSessionConfiguration(sdkAuthorization != null ? sdkAuthorization : ""),
                 session -> {
@@ -443,7 +459,8 @@ public class HyperswitchImpl {
         Logger.info("Hyperswitch", "presentPaymentSheet called");
 
         if (paymentSession == null) {
-            if (callback != null) callback.onError(new IllegalStateException("Payment session not initialised"));
+            if (callback != null)
+                callback.onError(new IllegalStateException("Payment session not initialised"));
             return;
         }
 
@@ -503,16 +520,30 @@ public class HyperswitchImpl {
         Logger.info("Hyperswitch", "confirmPayment called");
 
         if (paymentElementBound == null) {
-            if (callback != null) callback.onError("PaymentElement not bound — call createElement() first");
+            if (callback != null)
+                callback.onError("PaymentElement not bound — call createElement() first");
             return;
         }
 
         activity.runOnUiThread(() ->
-            paymentElementBound.confirmPayment(result -> {
-                if (callback != null) callback.onResult(paymentResultToJSObject(result));
-                return null;
-            })
+                paymentElementBound.confirmPayment(result -> {
+                    if (callback != null) callback.onResult(paymentResultToJSObject(result));
+                    return null;
+                })
         );
+    }
+
+    // ── OnPaymentConfirmButtonClick ──────────────────────────────────────────────────────────
+
+    private volatile Function1 <Boolean, Unit> pendingConfirmButtonCallback;
+
+
+    public void resolvePaymentConfirmButtonClick(boolean proceed) {
+        kotlin.jvm.functions.Function1<Boolean, Unit> cb = pendingConfirmButtonCallback;
+        pendingConfirmButtonCallback = null;
+        if (cb != null) {
+            cb.invoke(proceed);
+        }
     }
 
     // ── CustomerSavedPaymentMethods ───────────────────────────────────────────────────────────
@@ -525,7 +556,8 @@ public class HyperswitchImpl {
         Logger.info("Hyperswitch", "getCustomerSavedPaymentMethods called");
 
         if (paymentSession == null) {
-            if (callback != null) callback.onError("paymentSession not ready — call initPaymentSession() first");
+            if (callback != null)
+                callback.onError("paymentSession not ready — call initPaymentSession() first");
             return;
         }
 
@@ -728,7 +760,7 @@ public class HyperswitchImpl {
             return;
         }
         activity.runOnUiThread(() ->
-            handler.confirmWithCustomerDefaultPaymentMethod(cvcWidgetView, resumeWithPaymentResult(callback))
+                handler.confirmWithCustomerDefaultPaymentMethod(cvcWidgetView, resumeWithPaymentResult(callback))
         );
     }
 
@@ -740,11 +772,13 @@ public class HyperswitchImpl {
             return;
         }
         activity.runOnUiThread(() ->
-            handler.confirmWithCustomerLastUsedPaymentMethod(cvcWidgetView, resumeWithPaymentResult(callback))
+                handler.confirmWithCustomerLastUsedPaymentMethod(cvcWidgetView, resumeWithPaymentResult(callback))
         );
     }
 
-    /** Builds a bare-minimum Continuation that forwards the suspend result to our callback. */
+    /**
+     * Builds a bare-minimum Continuation that forwards the suspend result to our callback.
+     */
     private Continuation<PaymentResult> resumeWithPaymentResult(PaymentResultCallback callback) {
         return new Continuation<PaymentResult>() {
             @Override
