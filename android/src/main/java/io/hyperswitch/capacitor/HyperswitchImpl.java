@@ -174,11 +174,39 @@ public class HyperswitchImpl {
     // ── View Registration (called by PaymentElementPlugin / CVCWidgetPlugin) ─────────────────
 
     public void registerPaymentElementView(PaymentElement view) {
+        if (view == null) {
+            unbindPaymentElement();
+        }
         this.paymentElementView = view;
     }
 
     public void registerCVCWidgetView(CVCWidget view) {
+        if (view == null) {
+            unbindCvcWidget();
+        }
         this.cvcWidgetView = view;
+    }
+
+    // ── Bound Element Cleanup ─────────────────────────────────────────────────────────────────
+
+    private void unbindPaymentElement() {
+        if (paymentElementBound != null) {
+            if (elements != null) {
+                elements.unbind(paymentElementBound);
+            }
+            paymentElementBound.destroy();
+            paymentElementBound = null;
+        }
+    }
+
+    private void unbindCvcWidget() {
+        if (cvcWidgetBound != null) {
+            if (elements != null) {
+                elements.unbind(cvcWidgetBound);
+            }
+            cvcWidgetBound.destroy();
+            cvcWidgetBound = null;
+        }
     }
 
     // ── Elements API ──────────────────────────────────────────────────────────────────────────
@@ -189,6 +217,10 @@ public class HyperswitchImpl {
      */
     public void elements(JSObject elementsOptions, ElementsCallback callback) {
         Logger.info("Hyperswitch", "elements called");
+
+        // Clean up existing bound elements before creating a new Elements session
+        unbindPaymentElement();
+        unbindCvcWidget();
 
         if (paymentSession == null) {
             if (callback != null) callback.onError("Hyperswitch not initialised — call init() first");
@@ -245,6 +277,7 @@ public class HyperswitchImpl {
                     Logger.error("Hyperswitch", new Throwable("PaymentElementView not registered yet"));
                     return;
                 }
+                unbindPaymentElement();
                 Map<String, Object> configMap = jsObjectToMap(createOptions);
                 List<String> subscribedEventsList = extractAndRemoveSubscribedEvents(configMap);
                 paymentElementBound = elements.bind(
@@ -291,6 +324,7 @@ public class HyperswitchImpl {
                     Logger.error("Hyperswitch", new Throwable("CvcWidgetView not registered yet"));
                     return;
                 }
+                unbindCvcWidget();
                 Map<String, Object> configMap = jsObjectToMap(createOptions);
                 cvcWidgetBound = elements.bind(
                         cvcWidgetView,
