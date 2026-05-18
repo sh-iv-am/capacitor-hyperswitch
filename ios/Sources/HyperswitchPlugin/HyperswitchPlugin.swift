@@ -55,6 +55,8 @@ public class HyperswitchPlugin: CAPPlugin, CAPBridgedPlugin {
             switch source {
             case "paymentElement": channel = "paymentElementEvent"
             case "cvcWidget": channel = "cvcWidgetEvent"
+            case "onPaymentResultEvent": channel = "onPaymentResultEvent"
+            case "onPaymentConfirmButtonClickEvent": channel = "onPaymentConfirmButtonClickEvent"
             default: channel = "paymentEvent"
             }
             self.notifyListeners(
@@ -222,6 +224,16 @@ public class HyperswitchPlugin: CAPPlugin, CAPBridgedPlugin {
             onError: { msg in call.reject(msg) }
         )
     }
+    
+    
+    @objc func resolvePaymentConfirmButtonClick(_ call: CAPPluginCall) {
+        let proceed = call.getBool("proceed")
+
+        impl.resolvePaymentConfirmButtonClick(
+            proceed: proceed ?? false
+        )
+    }
+    
 
     // ── PaymentElement lifecycle stubs ─────────────────────────────────────────
     // These are no-ops on iOS; mounting/unmounting is handled natively by
