@@ -1,5 +1,7 @@
 package io.hyperswitch.capacitor;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -165,20 +167,6 @@ public class HyperswitchImpl {
                 customEndpointConfig.getOverrideCustomLoggingEndpoint() != null ?
                         customEndpointConfig.getOverrideCustomLoggingEndpoint() : customEndpointConfig.getCustomEndpoint() : null;
 
-        if (customBackendUrl != null && customLoggingUrl != null) {
-            paymentSession = new PaymentSession(
-                    activity,
-                    publishableKey,
-                    customBackendUrl,
-                    customLoggingUrl
-            );
-        } else {
-            paymentSession = new PaymentSession(
-                    activity,
-                    publishableKey
-            );
-        }
-
         hyperswitchInstance = Hyperswitch.INSTANCE.init(
                 activity,
                 new HyperswitchConfiguration(publishableKey, profileId, customEndpointConfig, env)
@@ -236,12 +224,6 @@ public class HyperswitchImpl {
         unbindPaymentElement();
         unbindCvcWidget();
 
-        if (paymentSession == null) {
-            if (callback != null)
-                callback.onError("Hyperswitch not initialised — call init() first");
-            return;
-        }
-
         String sdkAuthorization = elementsOptions != null
                 ? elementsOptions.getString("sdkAuthorization")
                 : null;
@@ -295,6 +277,7 @@ public class HyperswitchImpl {
                 unbindPaymentElement();
                 Map<String, Object> configMap = jsObjectToMap(createOptions);
                 List<String> subscribedEventsList = extractAndRemoveSubscribedEvents(configMap);
+                Log.i("MANIDEEP","Binding Again");
                 paymentElementBound = elements.bind(
                         paymentElementView,
                         configMap,
@@ -416,6 +399,8 @@ public class HyperswitchImpl {
                 },
                 result -> {
                     Logger.info("Hyperswitch", "updateIntent result: " + result);
+                    Log.i("MANIDEEP","done " + result);
+
                     if (callback != null) {
                         JSObject js = new JSObject();
                         switch (result) {

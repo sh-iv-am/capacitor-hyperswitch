@@ -16,6 +16,8 @@ import { paymentElementPlugin } from './views/payment-element/index';
 import { cvcWidgetPlugin } from './views/cvc-widget/index';
 import { createPaymentSessionHandler } from './PaymentSession';
 
+let updateIntentInProgress = false
+
 function getContentPosition(el: HTMLElement): { x: number; y: number; width: number; height: number } {
   const rect = el.getBoundingClientRect();
   return {
@@ -286,6 +288,7 @@ export function createCvcWidget(plugin: HyperswitchPlugin, options?: CvcWidgetOp
   };
 }
 
+
 export function createElements(plugin: HyperswitchPlugin): Elements {
   function create(options: { type: 'paymentElement'; options?: PaymentSheetOptions }): PaymentElement;
   function create(options: { type: 'cvcWidget'; options?: CvcWidgetOptions }): CvcWidget;
@@ -303,8 +306,16 @@ export function createElements(plugin: HyperswitchPlugin): Elements {
     create,
 
     async updateIntent(intentResolver: () => Promise<PaymentSessionConfiguration>): Promise<void> {
+      if(updateIntentInProgress){
+        throw new Error('updateIntent is already in progress. Please wait for the current update to finish before calling it again.');
+      }else{
+      updateIntentInProgress = true;
       const paymentSessionConfiguration = await intentResolver();
-      return plugin.updateIntent(paymentSessionConfiguration);
+      let result = plugin.updateIntent(paymentSessionConfiguration).then(() => {
+        updateIntentInProgress = false;
+      });
+      return Promise.resolve(result);  
+      }
     },
 
     async getCustomerSavedPaymentMethods(): Promise<CustomerSavedPaymentMethodsSession> {
