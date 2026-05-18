@@ -52,7 +52,7 @@ export interface PrimaryButton {
   colors?: PrimaryButtonColorType;
 }
 
-export type GooglePayButtonType = 'buy' | 'book' | 'checkout' | 'donate' | 'order' | 'pay' | 'subscribe' | 'plain';
+export type GooglePayButtonType = 'BUY' | 'BOOK' | 'CHECKOUT' | 'DONATE' | 'ORDER' | 'PAY' | 'SUBSCRIBE' | 'PLAIN';
 export type GooglePayButtonStyle = 'light' | 'dark';
 
 export interface GooglePayThemeBaseStyle {
