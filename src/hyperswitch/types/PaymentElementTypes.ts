@@ -1,8 +1,11 @@
-import { PaymentEventData, PaymentResult } from './PaymentTypes';
+import { PaymentEventData, PaymentRequestData, PaymentResult } from './PaymentTypes';
 
+
+export type removeListenerFunction = Promise<{ remove: () => void }> | { remove: () => void };
 export interface PaymentElement {
-  on(event: string, handler?: (data?: PaymentEventData) => void): void;
-  onPaymentResult(handler?: (data: PaymentResult) => void): void;
+  on(event: string, handler?: (data?: PaymentEventData) => void): removeListenerFunction;
+  onPaymentResult(handler?: (data: PaymentResult) => void): removeListenerFunction;
+  onPaymentConfirmButtonClick(handler?: (data?: PaymentRequestData) => boolean): removeListenerFunction;
   collapse(): void;
   blur(): void;
   update(options: Record<string, Object>): void;
@@ -34,6 +37,7 @@ export interface PaymentElementProps {
   onReady?: () => void;
   onChange?: (data?: PaymentEventData) => void;
   onPaymentResult?: (data: PaymentResult) => void;
+  onPaymentConfirmButtonClick?: (data?: PaymentRequestData) => boolean;
   className?: string;
   style?: string;
 }

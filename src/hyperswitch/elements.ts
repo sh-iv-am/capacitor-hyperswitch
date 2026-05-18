@@ -9,10 +9,14 @@ import type {
   CvcWidgetOptions,
   PaymentSessionConfiguration,
   CustomerSavedPaymentMethodsSession,
+  PaymentRequestData,
+  removeListenerFunction,
 } from './definitions';
 import { paymentElementPlugin } from './views/payment-element/index';
 import { cvcWidgetPlugin } from './views/cvc-widget/index';
 import { createPaymentSessionHandler } from './PaymentSession';
+
+let updateIntentInProgress = false
 
 function getContentPosition(el: HTMLElement): { x: number; y: number; width: number; height: number } {
   const rect = el.getBoundingClientRect();
@@ -102,20 +106,33 @@ export function createPaymentElement(plugin: HyperswitchPlugin, options?: Paymen
   }
 
   return {
-    on(event: string, handler?: (data?: PaymentEventData) => void): void {
-      if (!handler) return;
+    on(event: string, handler?: (data?: PaymentEventData) => void): removeListenerFunction {
+      if (!handler) return { remove: () => {} };
       // Subscribe persistently via Capacitor's addListener.
       // Native side fires "paymentElementEvent" for all widget events; we filter by type here.
-      plugin.addListener('paymentElementEvent', (eventData: PaymentEventData) => {
+      return plugin.addListener('paymentElementEvent', (eventData: PaymentEventData) => {
         if (eventData.type === event) {
           handler(eventData);
         }
       });
     },
-    onPaymentResult(handler?: (data: PaymentResult) => void): void {
-      if (!handler) return;
-      plugin.addListener('onPaymentResultEvent', (eventData: PaymentEventData) => {
+    onPaymentResult(handler?: (data: PaymentResult) => void): removeListenerFunction {
+      if (!handler) return { remove: () => {} };
+      return plugin.addListener('onPaymentResultEvent', (eventData: PaymentEventData) => {
         handler(toPaymentResult(eventData));
+      });
+    },
+    onPaymentConfirmButtonClick(handler?: (data: PaymentRequestData) => boolean): removeListenerFunction {
+      if (!handler) return { remove: () => {} };
+      return plugin.addListener('onPaymentConfirmButtonClickEvent', (eventData: PaymentEventData) => {
+        try {
+          let data = eventData.payload as PaymentRequestData || {};
+          data.paymentMethodType = data.paymentMethodType?.toUpperCase() || '';
+          const proceed = handler(data) !== false;
+          plugin.resolvePaymentConfirmButtonClick({ proceed });
+        } catch (e) {
+          plugin.resolvePaymentConfirmButtonClick({ proceed: false });
+        }
       });
     },
     collapse(): void {
@@ -251,12 +268,22 @@ export function createCvcWidget(plugin: HyperswitchPlugin, options?: CvcWidgetOp
       cvcWidgetPlugin.destroy();
       mountedElement = null;
     },
-    on(event: string, handler?: (data?: PaymentEventData) => void): void {
-      if (!handler) return;
+    on(event: string, handler?: (data?: PaymentEventData) => void): removeListenerFunction | void {
+      if (!handler) return { remove: () => {} };
       if (!eventHandlers.has(event)) {
         eventHandlers.set(event, []);
       }
       eventHandlers.get(event)?.push(handler);
+      return {
+        remove: () => {
+          const handlers = eventHandlers.get(event);
+          if (!handlers) return;
+          const index = handlers.indexOf(handler);
+          if (index !== -1) {
+            handlers.splice(index, 1);
+          }
+        },
+      };
     },
   };
 }
@@ -278,8 +305,16 @@ export function createElements(plugin: HyperswitchPlugin): Elements {
     create,
 
     async updateIntent(intentResolver: () => Promise<PaymentSessionConfiguration>): Promise<void> {
+      if(updateIntentInProgress){
+        throw new Error('updateIntent is already in progress. Please wait for the current update to finish before calling it again.');
+      }else{
+      updateIntentInProgress = true;
       const paymentSessionConfiguration = await intentResolver();
-      return plugin.updateIntent(paymentSessionConfiguration);
+      let result = plugin.updateIntent(paymentSessionConfiguration).then(() => {
+        updateIntentInProgress = false;
+      });
+      return Promise.resolve(result);  
+      }
     },
 
     async getCustomerSavedPaymentMethods(): Promise<CustomerSavedPaymentMethodsSession> {

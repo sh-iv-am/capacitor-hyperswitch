@@ -37,6 +37,7 @@ npx cap sync
 * [`confirmWithCustomerDefaultPaymentMethod(...)`](#confirmwithcustomerdefaultpaymentmethod)
 * [`confirmWithCustomerLastUsedPaymentMethod(...)`](#confirmwithcustomerlastusedpaymentmethod)
 * [`confirmPayment(...)`](#confirmpayment)
+* [`resolvePaymentConfirmButtonClick(...)`](#resolvepaymentconfirmbuttonclick)
 * [`initPaymentSession(...)`](#initpaymentsession)
 * [`presentPaymentSheet(...)`](#presentpaymentsheet)
 * [`elementOn(...)`](#elementon)
@@ -51,6 +52,7 @@ npx cap sync
 * [`addListener('paymentElementEvent', ...)`](#addlistenerpaymentelementevent-)
 * [`addListener('cvcWidgetEvent', ...)`](#addlistenercvcwidgetevent-)
 * [`addListener('onPaymentResultEvent', ...)`](#addlisteneronpaymentresultevent-)
+* [`addListener('onPaymentConfirmButtonClickEvent', ...)`](#addlisteneronpaymentconfirmbuttonclickevent-)
 * [Interfaces](#interfaces)
 * [Type Aliases](#type-aliases)
 
@@ -210,6 +212,19 @@ confirmPayment(options: { confirmParams: Record<string, Object>; }) => Promise<P
 | **`options`** | <code>{ confirmParams: <a href="#record">Record</a>&lt;string, <a href="#object">Object</a>&gt;; }</code> |
 
 **Returns:** <code>Promise&lt;<a href="#paymentresult">PaymentResult</a>&gt;</code>
+
+--------------------
+
+
+### resolvePaymentConfirmButtonClick(...)
+
+```typescript
+resolvePaymentConfirmButtonClick(options: { proceed: boolean; }) => Promise<void>
+```
+
+| Param         | Type                               |
+| ------------- | ---------------------------------- |
+| **`options`** | <code>{ proceed: boolean; }</code> |
 
 --------------------
 
@@ -376,6 +391,22 @@ addListener(event: 'onPaymentResultEvent', handler: (data: PaymentEventData) => 
 | Param         | Type                                                                             |
 | ------------- | -------------------------------------------------------------------------------- |
 | **`event`**   | <code>'onPaymentResultEvent'</code>                                              |
+| **`handler`** | <code>(data: <a href="#paymenteventdata">PaymentEventData</a>) =&gt; void</code> |
+
+**Returns:** <code>Promise&lt;{ remove: () =&gt; Promise&lt;void&gt;; }&gt;</code>
+
+--------------------
+
+
+### addListener('onPaymentConfirmButtonClickEvent', ...)
+
+```typescript
+addListener(event: 'onPaymentConfirmButtonClickEvent', handler: (data: PaymentEventData) => void) => Promise<{ remove: () => Promise<void>; }>
+```
+
+| Param         | Type                                                                             |
+| ------------- | -------------------------------------------------------------------------------- |
+| **`event`**   | <code>'onPaymentConfirmButtonClickEvent'</code>                                  |
 | **`handler`** | <code>(data: <a href="#paymenteventdata">PaymentEventData</a>) =&gt; void</code> |
 
 **Returns:** <code>Promise&lt;{ remove: () =&gt; Promise&lt;void&gt;; }&gt;</code>
@@ -1312,6 +1343,9 @@ Creates a new function.
 | **`walletButtonsConfiguration`**                   | <code><a href="#walletbuttonsconfiguration">WalletButtonsConfiguration</a></code> |
 | **`paymentMethodsConfig`**                         | <code>PaymentMethodConfig[]</code>                                                |
 | **`paymentMethodOrder`**                           | <code>string[]</code>                                                             |
+| **`preloadCardElement`**                           | <code>boolean</code>                                                              |
+| **`alwaysSendCustomerAcceptance`**                 | <code>boolean</code>                                                              |
+| **`opensCardScannerAutomatically`**                | <code>boolean</code>                                                              |
 
 
 #### Appearance
@@ -1373,6 +1407,7 @@ Creates a new function.
 | Prop                  | Type                |
 | --------------------- | ------------------- |
 | **`backgroundColor`** | <code>string</code> |
+| **`selected`**        | <code>string</code> |
 | **`unselected`**      | <code>string</code> |
 
 
@@ -1381,6 +1416,9 @@ Creates a new function.
 | Prop         | Type                                                                  |
 | ------------ | --------------------------------------------------------------------- |
 | **`colors`** | <code><a href="#checkediconcolortype">CheckedIconColorType</a></code> |
+| **`size`**   | <code>number</code>                                                   |
+| **`bottom`** | <code>number</code>                                                   |
+| **`right`**  | <code>number</code>                                                   |
 
 
 #### CheckedIconColorType
@@ -1393,9 +1431,10 @@ Creates a new function.
 
 #### CheckedIconColors
 
-| Prop        | Type                |
-| ----------- | ------------------- |
-| **`color`** | <code>string</code> |
+| Prop         | Type                |
+| ------------ | ------------------- |
+| **`color`**  | <code>string</code> |
+| **`stroke`** | <code>string</code> |
 
 
 #### AddressDetails
@@ -1417,6 +1456,7 @@ Creates a new function.
 | **`country`**    | <code>string</code> |
 | **`line1`**      | <code>string</code> |
 | **`line2`**      | <code>string</code> |
+| **`line3`**      | <code>string</code> |
 | **`postalCode`** | <code>string</code> |
 | **`state`**      | <code>string</code> |
 
@@ -1485,12 +1525,14 @@ Creates a new function.
 | --------------- | ------------------------------------------------------------------------- |
 | **`googlePay`** | <code><a href="#googlepayconfiguration">GooglePayConfiguration</a></code> |
 | **`applePay`**  | <code><a href="#applepayconfiguration">ApplePayConfiguration</a></code>   |
+| **`payPal`**    | <code><a href="#paypalconfiguration">PayPalConfiguration</a></code>       |
 
 
 #### GooglePayConfiguration
 
 | Prop              | Type                                                                        |
 | ----------------- | --------------------------------------------------------------------------- |
+| **`visibility`**  | <code>'shown' \| 'hidden'</code>                                            |
 | **`buttonType`**  | <code><a href="#googlepaybuttontype">GooglePayButtonType</a></code>         |
 | **`buttonStyle`** | <code><a href="#googlepaythemebasestyle">GooglePayThemeBaseStyle</a></code> |
 
@@ -1507,6 +1549,7 @@ Creates a new function.
 
 | Prop              | Type                                                                      |
 | ----------------- | ------------------------------------------------------------------------- |
+| **`visibility`**  | <code>'shown' \| 'hidden'</code>                                          |
 | **`buttonType`**  | <code><a href="#applepaybuttontype">ApplePayButtonType</a></code>         |
 | **`buttonStyle`** | <code><a href="#applepaythemebasestyle">ApplePayThemeBaseStyle</a></code> |
 
@@ -1517,6 +1560,23 @@ Creates a new function.
 | ----------- | ------------------------------------------------------------------- |
 | **`light`** | <code><a href="#applepaybuttonstyle">ApplePayButtonStyle</a></code> |
 | **`dark`**  | <code><a href="#applepaybuttonstyle">ApplePayButtonStyle</a></code> |
+
+
+#### PayPalConfiguration
+
+| Prop              | Type                                                                  |
+| ----------------- | --------------------------------------------------------------------- |
+| **`visibility`**  | <code>'shown' \| 'hidden'</code>                                      |
+| **`buttonType`**  | <code><a href="#paypalbuttontype">PayPalButtonType</a></code>         |
+| **`buttonStyle`** | <code><a href="#paypalthemebasestyle">PayPalThemeBaseStyle</a></code> |
+
+
+#### PayPalThemeBaseStyle
+
+| Prop        | Type                                                            |
+| ----------- | --------------------------------------------------------------- |
+| **`light`** | <code><a href="#paypalbuttonstyle">PayPalButtonStyle</a></code> |
+| **`dark`**  | <code><a href="#paypalbuttonstyle">PayPalButtonStyle</a></code> |
 
 
 #### PaymentMethodConfig
@@ -1634,7 +1694,7 @@ Construct a type with a set of properties K of type T
 
 #### Theme
 
-<code>'Default' | 'Light' | 'Dark' | 'Minimal' | 'FlatMinimal'</code>
+<code>'Default' | 'Light' | 'Dark' | 'Minimal' | 'FlatMinimal' | 'Brutal' | 'Glass' | 'Skeu' | 'Clay' | 'Charcoal' | 'Soft'</code>
 
 
 #### SubscriptionEvent
@@ -1649,7 +1709,7 @@ Construct a type with a set of properties K of type T
 
 #### RedirectionInfo
 
-<code>'hidden' | 'visible'</code>
+<code>'hidden' | 'shown'</code>
 
 
 #### LayoutType
@@ -1669,7 +1729,7 @@ Construct a type with a set of properties K of type T
 
 #### GooglePayButtonType
 
-<code>'buy' | 'book' | 'checkout' | 'donate' | 'order' | 'pay' | 'subscribe' | 'plain'</code>
+<code>'BUY' | 'BOOK' | 'CHECKOUT' | 'DONATE' | 'ORDER' | 'PAY' | 'SUBSCRIBE' | 'PLAIN'</code>
 
 
 #### GooglePayButtonStyle
@@ -1685,5 +1745,15 @@ Construct a type with a set of properties K of type T
 #### ApplePayButtonStyle
 
 <code>'white' | 'whiteOutline' | 'black'</code>
+
+
+#### PayPalButtonType
+
+<code>'paypal' | 'checkout' | 'buynow' | 'pay'</code>
+
+
+#### PayPalButtonStyle
+
+<code>'gold' | 'blue' | 'white' | 'black' | 'silver'</code>
 
 </docgen-api>
