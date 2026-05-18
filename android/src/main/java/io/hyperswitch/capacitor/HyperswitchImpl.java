@@ -277,7 +277,6 @@ public class HyperswitchImpl {
                 unbindPaymentElement();
                 Map<String, Object> configMap = jsObjectToMap(createOptions);
                 List<String> subscribedEventsList = extractAndRemoveSubscribedEvents(configMap);
-                Log.i("MANIDEEP","Binding Again");
                 paymentElementBound = elements.bind(
                         paymentElementView,
                         configMap,
@@ -399,7 +398,6 @@ public class HyperswitchImpl {
                 },
                 result -> {
                     Logger.info("Hyperswitch", "updateIntent result: " + result);
-                    Log.i("MANIDEEP","done " + result);
 
                     if (callback != null) {
                         JSObject js = new JSObject();
