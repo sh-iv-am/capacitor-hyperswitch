@@ -1639,7 +1639,7 @@ Construct a type with a set of properties K of type T
 
 #### SubscriptionEvent
 
-<code>'PAYMENT_METHOD_INFO_CARD' | 'PAYMENT_METHOD_STATUS' | 'FORM_STATUS' | 'PAYMENT_METHOD_INFO_ADDRESS' | 'CVC_STATUS'</code>
+<code>'PAYMENT_METHOD_INFO_CARD' | 'PAYMENT_METHOD_STATUS' | 'FORM_STATUS' | 'PAYMENT_METHOD_INFO_BILLING_ADDRESS'</code>
 
 
 #### locale
