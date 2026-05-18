@@ -13,9 +13,12 @@ export interface OverrideEndpontConfiguration {
   customAirborneEndpoint?: string;
 }
 
+export type HyperswitchEnvironment = 'sandbox' | 'production';
+
 export interface HyperswitchConfiguration {
   publishableKey: string;
   profileId?: string;
+  environment?: HyperswitchEnvironment;
   customConfig?: CustomEndpointConfiguration | OverrideEndpontConfiguration;
 }
 

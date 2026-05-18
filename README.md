@@ -392,6 +392,7 @@ addListener(event: 'onPaymentResultEvent', handler: (data: PaymentEventData) => 
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **`publishableKey`** | <code>string</code>                                                                                                                                             |
 | **`profileId`**      | <code>string</code>                                                                                                                                             |
+| **`environment`**    | <code><a href="#hyperswitchenvironment">HyperswitchEnvironment</a></code>                                                                                       |
 | **`customConfig`**   | <code><a href="#customendpointconfiguration">CustomEndpointConfiguration</a> \| <a href="#overrideendpontconfiguration">OverrideEndpontConfiguration</a></code> |
 
 
@@ -448,21 +449,26 @@ addListener(event: 'onPaymentResultEvent', handler: (data: PaymentEventData) => 
 
 #### Colors
 
-| Prop                      | Type                |
-| ------------------------- | ------------------- |
-| **`primary`**             | <code>string</code> |
-| **`background`**          | <code>string</code> |
-| **`componentBackground`** | <code>string</code> |
-| **`componentBorder`**     | <code>string</code> |
-| **`componentDivider`**    | <code>string</code> |
-| **`componentText`**       | <code>string</code> |
-| **`primaryText`**         | <code>string</code> |
-| **`secondaryText`**       | <code>string</code> |
-| **`placeholderText`**     | <code>string</code> |
-| **`icon`**                | <code>string</code> |
-| **`error`**               | <code>string</code> |
-| **`loaderBackground`**    | <code>string</code> |
-| **`loaderForeground`**    | <code>string</code> |
+| Prop                               | Type                |
+| ---------------------------------- | ------------------- |
+| **`primary`**                      | <code>string</code> |
+| **`background`**                   | <code>string</code> |
+| **`componentBackground`**          | <code>string</code> |
+| **`componentBorder`**              | <code>string</code> |
+| **`componentDivider`**             | <code>string</code> |
+| **`componentText`**                | <code>string</code> |
+| **`primaryText`**                  | <code>string</code> |
+| **`secondaryText`**                | <code>string</code> |
+| **`placeholderText`**              | <code>string</code> |
+| **`icon`**                         | <code>string</code> |
+| **`error`**                        | <code>string</code> |
+| **`loaderBackground`**             | <code>string</code> |
+| **`loaderForeground`**             | <code>string</code> |
+| **`selectedComponentBackground`**  | <code>string</code> |
+| **`selectedComponentBorder`**      | <code>string</code> |
+| **`selectedComponentBorderWidth`** | <code>number</code> |
+| **`selectedComponentDivider`**     | <code>string</code> |
+| **`selectedComponentText`**        | <code>string</code> |
 
 
 #### Shapes
@@ -587,14 +593,14 @@ Provides functionality common to all JavaScript objects.
 | ----------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | **`constructor`** | <code><a href="#function">Function</a></code> | The initial value of <a href="#object">Object</a>.prototype.constructor is the standard built-in <a href="#object">Object</a> constructor. |
 
-| Method                   | Signature                                                 | Description                                                              |
-| ------------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------ |
-| **toString**             | () =&gt; string                                           | Returns a string representation of an object.                            |
-| **toLocaleString**       | () =&gt; string                                           | Returns a date converted to a string using the current locale.           |
-| **valueOf**              | () =&gt; <a href="#object">Object</a>                     | Returns the primitive value of the specified object.                     |
-| **hasOwnProperty**       | (v: <a href="#propertykey">PropertyKey</a>) =&gt; boolean | Determines whether an object has a property with the specified name.     |
-| **isPrototypeOf**        | (v: <a href="#object">Object</a>) =&gt; boolean           | Determines whether an object exists in another object's prototype chain. |
-| **propertyIsEnumerable** | (v: <a href="#propertykey">PropertyKey</a>) =&gt; boolean | Determines whether a specified property is enumerable.                   |
+| Method                   | Signature                                                 | Description                                                                          |
+| ------------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **toString**             | () =&gt; string                                           | Returns a string representation of an object.                                        |
+| **toLocaleString**       | () =&gt; string                                           | Returns a date converted to a string using the current <a href="#locale">locale</a>. |
+| **valueOf**              | () =&gt; <a href="#object">Object</a>                     | Returns the primitive value of the specified object.                                 |
+| **hasOwnProperty**       | (v: <a href="#propertykey">PropertyKey</a>) =&gt; boolean | Determines whether an object has a property with the specified name.                 |
+| **isPrototypeOf**        | (v: <a href="#object">Object</a>) =&gt; boolean           | Determines whether an object exists in another object's prototype chain.             |
+| **propertyIsEnumerable** | (v: <a href="#propertykey">PropertyKey</a>) =&gt; boolean | Determines whether a specified property is enumerable.                               |
 
 
 #### Function
@@ -1272,47 +1278,52 @@ Creates a new function.
 
 #### PaymentSheetOptions
 
-| Prop                                               | Type                                                                    |
-| -------------------------------------------------- | ----------------------------------------------------------------------- |
-| **`sdkAuthorization`**                             | <code>string</code>                                                     |
-| **`allowsDelayedPaymentMethods`**                  | <code>boolean</code>                                                    |
-| **`appearance`**                                   | <code><a href="#appearance">Appearance</a></code>                       |
-| **`shippingDetails`**                              | <code><a href="#addressdetails">AddressDetails</a></code>               |
-| **`primaryButtonLabel`**                           | <code>string</code>                                                     |
-| **`paymentSheetHeaderText`**                       | <code>string</code>                                                     |
-| **`savedPaymentScreenHeaderText`**                 | <code>string</code>                                                     |
-| **`merchantDisplayName`**                          | <code>string</code>                                                     |
-| **`defaultBillingDetails`**                        | <code><a href="#addressdetails">AddressDetails</a></code>               |
-| **`primaryButtonColor`**                           | <code>string</code>                                                     |
-| **`allowsPaymentMethodsRequiringShippingAddress`** | <code>boolean</code>                                                    |
-| **`displaySavedPaymentMethodsCheckbox`**           | <code>boolean</code>                                                    |
-| **`displaySavedPaymentMethods`**                   | <code>boolean</code>                                                    |
-| **`placeholder`**                                  | <code><a href="#placeholder">Placeholder</a></code>                     |
-| **`defaultView`**                                  | <code>boolean</code>                                                    |
-| **`disableBranding`**                              | <code>boolean</code>                                                    |
-| **`netceteraSDKApiKey`**                           | <code>string</code>                                                     |
-| **`displayDefaultSavedPaymentIcon`**               | <code>boolean</code>                                                    |
-| **`enablePartialLoading`**                         | <code>boolean</code>                                                    |
-| **`customer`**                                     | <code><a href="#customerconfiguration">CustomerConfiguration</a></code> |
-| **`paymentSheetHeaderLabel`**                      | <code>string</code>                                                     |
-| **`savedPaymentSheetHeaderLabel`**                 | <code>string</code>                                                     |
-| **`subscribedEvents`**                             | <code>SubscriptionEvent[]</code>                                        |
-| **`hideConfirmButton`**                            | <code>boolean</code>                                                    |
+| Prop                                               | Type                                                                              |
+| -------------------------------------------------- | --------------------------------------------------------------------------------- |
+| **`sdkAuthorization`**                             | <code>string</code>                                                               |
+| **`allowsDelayedPaymentMethods`**                  | <code>boolean</code>                                                              |
+| **`appearance`**                                   | <code><a href="#appearance">Appearance</a></code>                                 |
+| **`shippingDetails`**                              | <code><a href="#addressdetails">AddressDetails</a></code>                         |
+| **`primaryButtonLabel`**                           | <code>string</code>                                                               |
+| **`paymentSheetHeaderText`**                       | <code>string</code>                                                               |
+| **`savedPaymentScreenHeaderText`**                 | <code>string</code>                                                               |
+| **`merchantDisplayName`**                          | <code>string</code>                                                               |
+| **`billingDetails`**                               | <code><a href="#addressdetails">AddressDetails</a></code>                         |
+| **`primaryButtonColor`**                           | <code>string</code>                                                               |
+| **`allowsPaymentMethodsRequiringShippingAddress`** | <code>boolean</code>                                                              |
+| **`displaySavedPaymentMethodsCheckbox`**           | <code>boolean</code>                                                              |
+| **`displaySavedPaymentMethods`**                   | <code>boolean</code>                                                              |
+| **`displayPayButton`**                             | <code>boolean</code>                                                              |
+| **`placeholder`**                                  | <code><a href="#placeholder">Placeholder</a></code>                               |
+| **`defaultView`**                                  | <code>boolean</code>                                                              |
+| **`disableBranding`**                              | <code>boolean</code>                                                              |
+| **`netceteraSDKApiKey`**                           | <code>string</code>                                                               |
+| **`displayDefaultSavedPaymentIcon`**               | <code>boolean</code>                                                              |
+| **`enablePartialLoading`**                         | <code>boolean</code>                                                              |
+| **`customer`**                                     | <code><a href="#customerconfiguration">CustomerConfiguration</a></code>           |
+| **`paymentSheetHeaderLabel`**                      | <code>string</code>                                                               |
+| **`savedPaymentSheetHeaderLabel`**                 | <code>string</code>                                                               |
+| **`subscribedEvents`**                             | <code>SubscriptionEvent[]</code>                                                  |
+| **`hideConfirmButton`**                            | <code>boolean</code>                                                              |
+| **`locale`**                                       | <code><a href="#locale">locale</a></code>                                         |
+| **`redirectionInfo`**                              | <code><a href="#redirectioninfo">RedirectionInfo</a></code>                       |
+| **`stickyPayButton`**                              | <code>boolean</code>                                                              |
+| **`paymentMethodLayout`**                          | <code><a href="#paymentmethodlayout">PaymentMethodLayout</a></code>               |
+| **`walletButtonsConfiguration`**                   | <code><a href="#walletbuttonsconfiguration">WalletButtonsConfiguration</a></code> |
+| **`paymentMethodsConfig`**                         | <code>PaymentMethodConfig[]</code>                                                |
+| **`paymentMethodOrder`**                           | <code>string[]</code>                                                             |
 
 
 #### Appearance
 
-| Prop                | Type                                                                      |
-| ------------------- | ------------------------------------------------------------------------- |
-| **`colors`**        | <code><a href="#colortype">ColorType</a></code>                           |
-| **`shapes`**        | <code><a href="#shapes">Shapes</a></code>                                 |
-| **`font`**          | <code><a href="#font">Font</a></code>                                     |
-| **`primaryButton`** | <code><a href="#primarybutton">PrimaryButton</a></code>                   |
-| **`googlePay`**     | <code><a href="#googlepayconfiguration">GooglePayConfiguration</a></code> |
-| **`applePay`**      | <code><a href="#applepayconfiguration">ApplePayConfiguration</a></code>   |
-| **`theme`**         | <code><a href="#theme">Theme</a></code>                                   |
-| **`layout`**        | <code><a href="#layout">Layout</a></code>                                 |
-| **`locale`**        | <code>string</code>                                                       |
+| Prop                | Type                                                            |
+| ------------------- | --------------------------------------------------------------- |
+| **`theme`**         | <code><a href="#theme">Theme</a></code>                         |
+| **`colors`**        | <code><a href="#colortype">ColorType</a></code>                 |
+| **`shapes`**        | <code><a href="#shapes">Shapes</a></code>                       |
+| **`font`**          | <code><a href="#font">Font</a></code>                           |
+| **`primaryButton`** | <code><a href="#primarybutton">PrimaryButton</a></code>         |
+| **`logo`**          | <code><a href="#logocustomization">LogoCustomization</a></code> |
 
 
 #### PrimaryButton
@@ -1338,6 +1349,142 @@ Creates a new function.
 | **`background`** | <code>string</code> |
 | **`text`**       | <code>string</code> |
 | **`border`**     | <code>string</code> |
+
+
+#### LogoCustomization
+
+| Prop                          | Type                                                                        |
+| ----------------------------- | --------------------------------------------------------------------------- |
+| **`borderRadius`**            | <code>number</code>                                                         |
+| **`colors`**                  | <code><a href="#logocolortype">LogoColorType</a></code>                     |
+| **`checkedIconForSelection`** | <code><a href="#checkediconforselection">CheckedIconForSelection</a></code> |
+
+
+#### LogoColorType
+
+| Prop        | Type                                              |
+| ----------- | ------------------------------------------------- |
+| **`light`** | <code><a href="#logocolors">LogoColors</a></code> |
+| **`dark`**  | <code><a href="#logocolors">LogoColors</a></code> |
+
+
+#### LogoColors
+
+| Prop                  | Type                |
+| --------------------- | ------------------- |
+| **`backgroundColor`** | <code>string</code> |
+| **`unselected`**      | <code>string</code> |
+
+
+#### CheckedIconForSelection
+
+| Prop         | Type                                                                  |
+| ------------ | --------------------------------------------------------------------- |
+| **`colors`** | <code><a href="#checkediconcolortype">CheckedIconColorType</a></code> |
+
+
+#### CheckedIconColorType
+
+| Prop        | Type                                                            |
+| ----------- | --------------------------------------------------------------- |
+| **`light`** | <code><a href="#checkediconcolors">CheckedIconColors</a></code> |
+| **`dark`**  | <code><a href="#checkediconcolors">CheckedIconColors</a></code> |
+
+
+#### CheckedIconColors
+
+| Prop        | Type                |
+| ----------- | ------------------- |
+| **`color`** | <code>string</code> |
+
+
+#### AddressDetails
+
+| Prop          | Type                                        |
+| ------------- | ------------------------------------------- |
+| **`address`** | <code><a href="#address">Address</a></code> |
+| **`email`**   | <code>string</code>                         |
+| **`phone`**   | <code><a href="#phone">Phone</a></code>     |
+
+
+#### Address
+
+| Prop             | Type                |
+| ---------------- | ------------------- |
+| **`first_name`** | <code>string</code> |
+| **`last_name`**  | <code>string</code> |
+| **`city`**       | <code>string</code> |
+| **`country`**    | <code>string</code> |
+| **`line1`**      | <code>string</code> |
+| **`line2`**      | <code>string</code> |
+| **`postalCode`** | <code>string</code> |
+| **`state`**      | <code>string</code> |
+
+
+#### Phone
+
+| Prop         | Type                |
+| ------------ | ------------------- |
+| **`number`** | <code>string</code> |
+| **`code`**   | <code>string</code> |
+
+
+#### Placeholder
+
+| Prop             | Type                |
+| ---------------- | ------------------- |
+| **`cardNumber`** | <code>string</code> |
+| **`expiryDate`** | <code>string</code> |
+| **`cvv`**        | <code>string</code> |
+
+
+#### CustomerConfiguration
+
+| Prop                     | Type                |
+| ------------------------ | ------------------- |
+| **`id`**                 | <code>string</code> |
+| **`ephemeralKeySecret`** | <code>string</code> |
+
+
+#### PaymentMethodLayout
+
+| Prop                                   | Type                                                                            |
+| -------------------------------------- | ------------------------------------------------------------------------------- |
+| **`type`**                             | <code><a href="#layouttype">LayoutType</a></code>                               |
+| **`showOneClickWalletsOnTop`**         | <code>boolean</code>                                                            |
+| **`paymentMethodsArrangementForTabs`** | <code><a href="#paymentmethodsarrangement">PaymentMethodsArrangement</a></code> |
+| **`defaultCollapsed`**                 | <code>boolean</code>                                                            |
+| **`radios`**                           | <code>boolean</code>                                                            |
+| **`spacedAccordionItems`**             | <code>boolean</code>                                                            |
+| **`maxAccordionItems`**                | <code>number</code>                                                             |
+| **`savedMethodCustomization`**         | <code><a href="#savedmethodcustomization">SavedMethodCustomization</a></code>   |
+
+
+#### SavedMethodCustomization
+
+| Prop                   | Type                                                          |
+| ---------------------- | ------------------------------------------------------------- |
+| **`defaultCollapsed`** | <code>boolean</code>                                          |
+| **`hideCardExpiry`**   | <code>boolean</code>                                          |
+| **`hideCVCError`**     | <code>boolean</code>                                          |
+| **`cvcIcon`**          | <code><a href="#cvcicondisplay">CvcIconDisplay</a></code>     |
+| **`groupingBehavior`** | <code><a href="#groupingbehavior">GroupingBehavior</a></code> |
+
+
+#### GroupingBehavior
+
+| Prop                          | Type                 |
+| ----------------------------- | -------------------- |
+| **`displayInSeparateScreen`** | <code>boolean</code> |
+| **`groupByPaymentMethods`**   | <code>boolean</code> |
+
+
+#### WalletButtonsConfiguration
+
+| Prop            | Type                                                                      |
+| --------------- | ------------------------------------------------------------------------- |
+| **`googlePay`** | <code><a href="#googlepayconfiguration">GooglePayConfiguration</a></code> |
+| **`applePay`**  | <code><a href="#applepayconfiguration">ApplePayConfiguration</a></code>   |
 
 
 #### GooglePayConfiguration
@@ -1372,81 +1519,12 @@ Creates a new function.
 | **`dark`**  | <code><a href="#applepaybuttonstyle">ApplePayButtonStyle</a></code> |
 
 
-#### Layout
+#### PaymentMethodConfig
 
-| Prop                                   | Type                                                                            |
-| -------------------------------------- | ------------------------------------------------------------------------------- |
-| **`type`**                             | <code><a href="#layouttype">LayoutType</a></code>                               |
-| **`showOneClickWalletsOnTop`**         | <code>boolean</code>                                                            |
-| **`paymentMethodsArrangementForTabs`** | <code><a href="#paymentmethodsarrangement">PaymentMethodsArrangement</a></code> |
-| **`defaultCollapsed`**                 | <code>boolean</code>                                                            |
-| **`radios`**                           | <code>boolean</code>                                                            |
-| **`spacedAccordionItems`**             | <code>boolean</code>                                                            |
-| **`maxAccordionItems`**                | <code>number</code>                                                             |
-| **`savedMethodCustomization`**         | <code><a href="#savedmethodcustomization">SavedMethodCustomization</a></code>   |
-
-
-#### SavedMethodCustomization
-
-| Prop                   | Type                                                          |
-| ---------------------- | ------------------------------------------------------------- |
-| **`groupingBehavior`** | <code><a href="#groupingbehavior">GroupingBehavior</a></code> |
-
-
-#### GroupingBehavior
-
-| Prop                          | Type                 |
-| ----------------------------- | -------------------- |
-| **`displayInSeparateScreen`** | <code>boolean</code> |
-| **`groupByPaymentMethods`**   | <code>boolean</code> |
-
-
-#### AddressDetails
-
-| Prop          | Type                                        |
-| ------------- | ------------------------------------------- |
-| **`address`** | <code><a href="#address">Address</a></code> |
-| **`email`**   | <code>string</code>                         |
-| **`phone`**   | <code><a href="#phone">Phone</a></code>     |
-
-
-#### Address
-
-| Prop             | Type                |
-| ---------------- | ------------------- |
-| **`first_name`** | <code>string</code> |
-| **`last_name`**  | <code>string</code> |
-| **`city`**       | <code>string</code> |
-| **`country`**    | <code>string</code> |
-| **`line1`**      | <code>string</code> |
-| **`line2`**      | <code>string</code> |
-| **`zip`**        | <code>string</code> |
-| **`state`**      | <code>string</code> |
-
-
-#### Phone
-
-| Prop               | Type                |
-| ------------------ | ------------------- |
-| **`number`**       | <code>string</code> |
-| **`country_code`** | <code>string</code> |
-
-
-#### Placeholder
-
-| Prop             | Type                |
-| ---------------- | ------------------- |
-| **`cardNumber`** | <code>string</code> |
-| **`expiryDate`** | <code>string</code> |
-| **`cvv`**        | <code>string</code> |
-
-
-#### CustomerConfiguration
-
-| Prop                     | Type                |
-| ------------------------ | ------------------- |
-| **`id`**                 | <code>string</code> |
-| **`ephemeralKeySecret`** | <code>string</code> |
+| Prop                | Type                |
+| ------------------- | ------------------- |
+| **`paymentMethod`** | <code>string</code> |
+| **`message`**       | <code>string</code> |
 
 
 #### PaymentEventData
@@ -1458,6 +1536,11 @@ Creates a new function.
 
 
 ### Type Aliases
+
+
+#### HyperswitchEnvironment
+
+<code>'sandbox' | 'production'</code>
 
 
 #### Pick
@@ -1549,9 +1632,44 @@ Construct a type with a set of properties K of type T
 <code><a href="#functiondeclaration">FunctionDeclaration</a> | <a href="#variabledeclaration">VariableDeclaration</a> | <a href="#classdeclaration">ClassDeclaration</a></code>
 
 
+#### Theme
+
+<code>'Default' | 'Light' | 'Dark' | 'Minimal' | 'FlatMinimal'</code>
+
+
+#### SubscriptionEvent
+
+<code>'PAYMENT_METHOD_INFO_CARD' | 'PAYMENT_METHOD_STATUS' | 'FORM_STATUS' | 'PAYMENT_METHOD_INFO_ADDRESS' | 'CVC_STATUS'</code>
+
+
+#### locale
+
+<code>"en" | "he" | "fr" | "en-GB" | "ar" | "ja" | "de" | "fr-BE" | "es" | "ca" | "pt" | "it" | "pl" | "nl" | "nI-BE" | "sv" | "ru" | "lt" | "cs" | "sk" | "ls" | "cy" | "el" | "et" | "fi" | "nb" | "bs" | "da" | "ms" | "tr-CY"</code>
+
+
+#### RedirectionInfo
+
+<code>'hidden' | 'visible'</code>
+
+
+#### LayoutType
+
+<code>'tabs' | 'accordion'</code>
+
+
+#### PaymentMethodsArrangement
+
+<code>'grid' | 'auto'</code>
+
+
+#### CvcIconDisplay
+
+<code>'shown' | 'hidden'</code>
+
+
 #### GooglePayButtonType
 
-<code>'BUY' | 'BOOK' | 'CHECKOUT' | 'DONATE' | 'ORDER' | 'PAY' | 'SUBSCRIBE' | 'PLAIN'</code>
+<code>'buy' | 'book' | 'checkout' | 'donate' | 'order' | 'pay' | 'subscribe' | 'plain'</code>
 
 
 #### GooglePayButtonStyle
@@ -1567,25 +1685,5 @@ Construct a type with a set of properties K of type T
 #### ApplePayButtonStyle
 
 <code>'white' | 'whiteOutline' | 'black'</code>
-
-
-#### Theme
-
-<code>'Default' | 'Light' | 'Dark' | 'Minimal' | 'FlatMinimal'</code>
-
-
-#### LayoutType
-
-<code>'tabs' | 'accordion'</code>
-
-
-#### PaymentMethodsArrangement
-
-<code>'grid' | 'default'</code>
-
-
-#### SubscriptionEvent
-
-<code>'PAYMENT_METHOD_INFO_CARD' | 'PAYMENT_METHOD_STATUS' | 'FORM_STATUS' | 'PAYMENT_METHOD_INFO_ADDRESS' | 'CVC_STATUS'</code>
 
 </docgen-api>

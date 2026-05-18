@@ -12,6 +12,11 @@ export interface Colors {
   error?: string;
   loaderBackground?: string;
   loaderForeground?: string;
+  selectedComponentBackground?: string;
+  selectedComponentBorder?: string;
+  selectedComponentBorderWidth?: number;
+  selectedComponentDivider?: string;
+  selectedComponentText?: string;
 }
 
 export interface ColorType {

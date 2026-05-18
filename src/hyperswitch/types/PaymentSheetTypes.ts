@@ -8,7 +8,9 @@ export type SubscriptionEvent =
 
 export type Theme = 'Default' | 'Light' | 'Dark' | 'Minimal' | 'FlatMinimal';
 export type LayoutType = 'tabs' | 'accordion';
-export type PaymentMethodsArrangement = 'grid' | 'default';
+export type PaymentMethodsArrangement = 'grid' | 'auto';
+export type RedirectionInfo = 'hidden' | 'visible';
+export type CvcIconDisplay = 'shown' | 'hidden';
 
 export interface GroupingBehavior {
   displayInSeparateScreen?: boolean;
@@ -16,10 +18,14 @@ export interface GroupingBehavior {
 }
 
 export interface SavedMethodCustomization {
+  defaultCollapsed?: boolean;
+  hideCardExpiry?: boolean;
+  hideCVCError?: boolean;
+  cvcIcon?: CvcIconDisplay;
   groupingBehavior?: GroupingBehavior;
 }
 
-export interface Layout {
+export interface PaymentMethodLayout {
   type?: LayoutType;
   showOneClickWalletsOnTop?: boolean;
   paymentMethodsArrangementForTabs?: PaymentMethodsArrangement;
@@ -46,7 +52,7 @@ export interface PrimaryButton {
   colors?: PrimaryButtonColorType;
 }
 
-export type GooglePayButtonType = 'BUY' | 'BOOK' | 'CHECKOUT' | 'DONATE' | 'ORDER' | 'PAY' | 'SUBSCRIBE' | 'PLAIN';
+export type GooglePayButtonType = 'buy' | 'book' | 'checkout' | 'donate' | 'order' | 'pay' | 'subscribe' | 'plain';
 export type GooglePayButtonStyle = 'light' | 'dark';
 
 export interface GooglePayThemeBaseStyle {
@@ -72,16 +78,47 @@ export interface ApplePayConfiguration {
   buttonStyle?: ApplePayThemeBaseStyle;
 }
 
+export interface WalletButtonsConfiguration {
+  googlePay?: GooglePayConfiguration;
+  applePay?: ApplePayConfiguration;
+}
+
+export interface LogoColors {
+  backgroundColor?: string;
+  unselected?: string;
+}
+
+export interface LogoColorType {
+  light?: LogoColors;
+  dark?: LogoColors;
+}
+
+export interface CheckedIconColors {
+  color?: string;
+}
+
+export interface CheckedIconColorType {
+  light?: CheckedIconColors;
+  dark?: CheckedIconColors;
+}
+
+export interface CheckedIconForSelection {
+  colors?: CheckedIconColorType;
+}
+
+export interface LogoCustomization {
+  borderRadius?: number;
+  colors?: LogoColorType;
+  checkedIconForSelection?: CheckedIconForSelection;
+}
+
 export interface Appearance {
+  theme?: Theme;
   colors?: ColorType;
   shapes?: Shapes;
   font?: Font;
   primaryButton?: PrimaryButton;
-  googlePay?: GooglePayConfiguration;
-  applePay?: ApplePayConfiguration;
-  theme?: Theme;
-  layout?: Layout;
-  locale?: string;
+  logo?: LogoCustomization;
 }
 
 export interface Placeholder {
@@ -97,13 +134,13 @@ export interface Address {
   country?: string;
   line1?: string;
   line2?: string;
-  zip?: string;
+  postalCode?: string;
   state?: string;
 }
 
 export interface Phone {
   number?: string;
-  country_code?: string;
+  code?: string;
 }
 
 export interface AddressDetails {
@@ -117,6 +154,43 @@ export interface CustomerConfiguration {
   ephemeralKeySecret?: string;
 }
 
+export interface PaymentMethodConfig {
+  paymentMethod: string;
+  message?: string;
+}
+
+type locale =
+  | "en"
+  | "he"
+  | "fr"
+  | "en-GB"
+  | "ar"
+  | "ja"
+  | "de"
+  | "fr-BE"
+  | "es"
+  | "ca"
+  | "pt"
+  | "it"
+  | "pl"
+  | "nl"
+  | "nI-BE"
+  | "sv"
+  | "ru"
+  | "lt"
+  | "cs"
+  | "sk"
+  | "ls"
+  | "cy"
+  | "el"
+  | "et"
+  | "fi"
+  | "nb"
+  | "bs"
+  | "da"
+  | "ms"
+  | "tr-CY"
+
 export interface PaymentSheetOptions {
   sdkAuthorization?: string;
   allowsDelayedPaymentMethods?: boolean;
@@ -126,11 +200,12 @@ export interface PaymentSheetOptions {
   paymentSheetHeaderText?: string;
   savedPaymentScreenHeaderText?: string;
   merchantDisplayName?: string;
-  defaultBillingDetails?: AddressDetails;
+  billingDetails?: AddressDetails;
   primaryButtonColor?: string;
   allowsPaymentMethodsRequiringShippingAddress?: boolean;
   displaySavedPaymentMethodsCheckbox?: boolean;
   displaySavedPaymentMethods?: boolean;
+  displayPayButton?: boolean;
   placeholder?: Placeholder;
   defaultView?: boolean;
   disableBranding?: boolean;
@@ -142,4 +217,11 @@ export interface PaymentSheetOptions {
   savedPaymentSheetHeaderLabel?: string;
   subscribedEvents?: SubscriptionEvent[];
   hideConfirmButton?: boolean;
+  locale?: locale;
+  redirectionInfo?: RedirectionInfo;
+  stickyPayButton?: boolean;
+  paymentMethodLayout?: PaymentMethodLayout;
+  walletButtonsConfiguration?: WalletButtonsConfiguration;
+  paymentMethodsConfig?: PaymentMethodConfig[];
+  paymentMethodOrder?: string[];
 }
