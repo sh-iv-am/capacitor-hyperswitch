@@ -1,6 +1,13 @@
 import Foundation
 import Hyperswitch
 import UIKit
+struct PaymentConfirmData: Codable {
+    let paymentMethodData: String
+}
+
+let model = PaymentConfirmData(
+    paymentMethodData: "string"
+)
 
 public class HyperswitchImpl {
 
@@ -11,8 +18,11 @@ public class HyperswitchImpl {
 
     // ── State ──────────────────────────────────────────────────────────────────
 
+    private var hyperswitch: Hyperswitch?
     private var paymentSession: PaymentSession?
     private var currentSdkAuthorization: String?
+
+    private var paymentElementConfirm: PaymentResult?
 
     // Containers placed by the plugins in webView.scrollView. The SDK widget
     // is attached lazily during createElement(), once paymentSession exists.
@@ -56,7 +66,7 @@ public class HyperswitchImpl {
 
     private var paymentWidget: PaymentWidget? { paymentElementContainer?.widget }
     private var cvcWidget: CVCWidget? { cvcWidgetContainer?.widget }
-
+    private var onPaymentConfirmCallback : ((Bool) -> Void)? = nil
     // ── Init ───────────────────────────────────────────────────────────────────
 
     func initialize(
@@ -66,13 +76,27 @@ public class HyperswitchImpl {
         customConfig: [String: Any]?,
         environment: String?
     ) {
-        self.paymentSession = PaymentSession(
+        var customEndpointConfiguration: CustomEndpointConfiguration?
+        if let customEndpointConfig = customConfig?["CustomEndpointConfiguration"] as? String {
+            customEndpointConfiguration = CustomEndpointConfiguration.customEndpoint(customEndpointConfig)
+        }
+        if let overrideEndpontConfiguration = customConfig?["OverrideEndpontConfiguration"] as? [String: Any] {
+            let config = OverrideEndpointConfiguration(
+                backendEndpoint: overrideEndpontConfiguration["customBackendEndpoint"] as? String,
+                assetsEndpoint: overrideEndpontConfiguration["customAssetEndpoint"] as? String,
+                sdkConfigEndpoint: overrideEndpontConfiguration["customSDKConfigEndpoint"] as? String,
+                airborneEndpoint: overrideEndpontConfiguration["customAirborneEndpoint"] as? String,
+                loggingEndpoint: overrideEndpontConfiguration["customLoggingEndpoint"] as? String
+            )
+            customEndpointConfiguration = CustomEndpointConfiguration.overrideEndpoints(config)
+        }
+
+        let hyperswitchConfiguration = HyperswitchConfiguration(
             publishableKey: publishableKey,
-            profileId: profileId ?? "",
-            customBackendUrl: customConfig?["overrideCustomBackendEndpoint"] as? String ?? customConfig?["customEndpoint"] as? String
-                ?? nil,
-            customLogUrl: customConfig?["overrideCustomLoggingEndpoint"] as? String ?? customConfig?["customEndpoint"] as? String ?? nil
+            profileId: profileId,
+            customConfig: customEndpointConfiguration
         )
+        self.hyperswitch = Hyperswitch(configuration: hyperswitchConfiguration)
     }
 
     // ── Elements ───────────────────────────────────────────────────────────────
@@ -84,15 +108,16 @@ public class HyperswitchImpl {
         onReady: @escaping HandlerReadyCallback,
         onError: @escaping ErrorCallback
     ) {
-        DispatchQueue.main.async {
-            guard let paymentSession = self.paymentSession else {
+        DispatchQueue.main.async { [weak self] in
+            guard let hyperswitch = self?.hyperswitch else {
                 onError("Hyperswitch not initialised — call init() first")
                 return
             }
-            paymentSession.initPaymentSession(sdkAuthorization: sdkAuthorization)
-            paymentSession.getCustomerSavedPaymentMethods { handler in
+            let paymentSessionConfiguration = PaymentSessionConfiguration(sdkAuthorization: sdkAuthorization)
+            self?.paymentSession = hyperswitch.initPaymentSession(configuration: paymentSessionConfiguration)
+            self?.paymentSession?.getCustomerSavedPaymentMethods { handler in
                 let handlerId = UUID().uuidString
-                self.handlerRegistry[handlerId] = handler
+                self?.handlerRegistry[handlerId] = handler
                 print(
                     "[Hyperswitch] Elements ready, PaymentSessionHandler stored with id: \(handlerId)"
                 )
@@ -122,12 +147,30 @@ public class HyperswitchImpl {
                     print("[Hyperswitch] PaymentElement container not registered — call create() first")
                     return
                 }
-                container.attach(
+                let paymentElementref = container.attach(
                     paymentSession: paymentSession,
-                    configuration: configMap
-                ) { [weak self] builder in
-                    self?.bindPaymentElementEvents(builder: builder, subscribed: subscribedEvents, source: "paymentElement")
+                    configuration: configMap,
+                    completion: { [weak self] completion in
+                        self?.paymentElementConfirm = completion
+                    },
+                    subscribe: { [weak self] builder in
+                        self?.bindPaymentElementEvents(builder: builder, subscribed: subscribedEvents, source: "paymentElement")
+                    }
+                )
+                paymentElementref.shouldProceedWithPayment { data, callback in
+                    self.onPaymentConfirmCallback = callback
+                    do {
+                        let data = try JSONEncoder().encode(model)
+                            let dictionary = try JSONSerialization.jsonObject(
+                                with: data
+                            ) as? [String: Any]
+                        self.fireEvent(type: "onPaymentConfirmButtonClickEvent", payload: dictionary, source: "onPaymentConfirmButtonClickEvent")
+
+                    } catch {
+                        print(error)
+                    }
                 }
+                
                 print("[Hyperswitch] PaymentElement created and placed successfully")
 
             } else if lower == "cvcwidget" || lower == "cvc" {
@@ -145,6 +188,13 @@ public class HyperswitchImpl {
                 }
                 print("[Hyperswitch] CVCWidget created and placed successfully")
             }
+        }
+    }
+    
+    func resolvePaymentConfirmButtonClick(proceed: Bool){
+        let cb = self.onPaymentConfirmCallback
+        if(cb != nil) {
+            cb?(proceed)
         }
     }
 
@@ -223,11 +273,12 @@ public class HyperswitchImpl {
         onReady: @escaping VoidCallback,
         onError: @escaping ErrorCallback
     ) {
-        guard let paymentSession = paymentSession else {
+        guard let hyperswitch = hyperswitch else {
             onError("Hyperswitch not initialised — call init() first")
             return
         }
-        paymentSession.initPaymentSession(sdkAuthorization: sdkAuthorization)
+        let paymentSessionConfiguration = PaymentSessionConfiguration(sdkAuthorization: sdkAuthorization)
+        self.paymentSession = hyperswitch.initPaymentSession(configuration: paymentSessionConfiguration)
         currentSdkAuthorization = sdkAuthorization
         onReady()
     }
@@ -269,8 +320,9 @@ public class HyperswitchImpl {
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            paymentWidget.confirm { result in
-                onResult(self.paymentResultToDict(result))
+            paymentWidget.confirm()
+            if let paymentElementConfirm = paymentElementConfirm {
+                onResult(self.paymentResultToDict(paymentElementConfirm))
             }
         }
     }
@@ -325,18 +377,20 @@ public class HyperswitchImpl {
         }
         let result = handler.getCustomerLastUsedPaymentMethodData()
         switch result {
-            case .success(let paymentMethod):
-                if let jsonData = try? JSONEncoder().encode(paymentMethod),
-                   let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
-                    return ["data": dict]
-                }
-                return ["error": ["code": "ERROR", "message": "Failed to serialize PaymentMethod"]]
-            case .failure(let pmError):
-                if let jsonData = try? JSONEncoder().encode(pmError),
-                   let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
-                    return ["error": dict]
-                }
-                return ["error": ["code": pmError.code, "message": pmError.message]]
+        case .success(let paymentMethod):
+            if let jsonData = try? JSONEncoder().encode(paymentMethod),
+                let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+            {
+                return ["data": dict]
+            }
+            return ["error": ["code": "ERROR", "message": "Failed to serialize PaymentMethod"]]
+        case .failure(let pmError):
+            if let jsonData = try? JSONEncoder().encode(pmError),
+                let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+            {
+                return ["error": dict]
+            }
+            return ["error": ["code": pmError.code, "message": pmError.message]]
         }
     }
 
