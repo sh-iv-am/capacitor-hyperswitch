@@ -37,6 +37,7 @@ npx cap sync
 * [`confirmWithCustomerDefaultPaymentMethod(...)`](#confirmwithcustomerdefaultpaymentmethod)
 * [`confirmWithCustomerLastUsedPaymentMethod(...)`](#confirmwithcustomerlastusedpaymentmethod)
 * [`confirmPayment(...)`](#confirmpayment)
+* [`resolvePaymentConfirmButtonClick(...)`](#resolvepaymentconfirmbuttonclick)
 * [`initPaymentSession(...)`](#initpaymentsession)
 * [`presentPaymentSheet(...)`](#presentpaymentsheet)
 * [`elementOn(...)`](#elementon)
@@ -51,6 +52,7 @@ npx cap sync
 * [`addListener('paymentElementEvent', ...)`](#addlistenerpaymentelementevent-)
 * [`addListener('cvcWidgetEvent', ...)`](#addlistenercvcwidgetevent-)
 * [`addListener('onPaymentResultEvent', ...)`](#addlisteneronpaymentresultevent-)
+* [`addListener('onPaymentConfirmButtonClickEvent', ...)`](#addlisteneronpaymentconfirmbuttonclickevent-)
 * [Interfaces](#interfaces)
 * [Type Aliases](#type-aliases)
 
@@ -210,6 +212,19 @@ confirmPayment(options: { confirmParams: Record<string, Object>; }) => Promise<P
 | **`options`** | <code>{ confirmParams: <a href="#record">Record</a>&lt;string, <a href="#object">Object</a>&gt;; }</code> |
 
 **Returns:** <code>Promise&lt;<a href="#paymentresult">PaymentResult</a>&gt;</code>
+
+--------------------
+
+
+### resolvePaymentConfirmButtonClick(...)
+
+```typescript
+resolvePaymentConfirmButtonClick(options: { proceed: boolean; }) => Promise<void>
+```
+
+| Param         | Type                               |
+| ------------- | ---------------------------------- |
+| **`options`** | <code>{ proceed: boolean; }</code> |
 
 --------------------
 
@@ -376,6 +391,22 @@ addListener(event: 'onPaymentResultEvent', handler: (data: PaymentEventData) => 
 | Param         | Type                                                                             |
 | ------------- | -------------------------------------------------------------------------------- |
 | **`event`**   | <code>'onPaymentResultEvent'</code>                                              |
+| **`handler`** | <code>(data: <a href="#paymenteventdata">PaymentEventData</a>) =&gt; void</code> |
+
+**Returns:** <code>Promise&lt;{ remove: () =&gt; Promise&lt;void&gt;; }&gt;</code>
+
+--------------------
+
+
+### addListener('onPaymentConfirmButtonClickEvent', ...)
+
+```typescript
+addListener(event: 'onPaymentConfirmButtonClickEvent', handler: (data: PaymentEventData) => void) => Promise<{ remove: () => Promise<void>; }>
+```
+
+| Param         | Type                                                                             |
+| ------------- | -------------------------------------------------------------------------------- |
+| **`event`**   | <code>'onPaymentConfirmButtonClickEvent'</code>                                  |
 | **`handler`** | <code>(data: <a href="#paymenteventdata">PaymentEventData</a>) =&gt; void</code> |
 
 **Returns:** <code>Promise&lt;{ remove: () =&gt; Promise&lt;void&gt;; }&gt;</code>
@@ -1547,7 +1578,9 @@ Creates a new function.
 
 From T, pick a set of properties whose keys are in the union K
 
-<code>{ [P in K]: T[P]; }</code>
+<code>{
+ [P in K]: T[P];
+ }</code>
 
 
 #### PaymentMethod
@@ -1559,7 +1592,9 @@ From T, pick a set of properties whose keys are in the union K
 
 Construct a type with a set of properties K of type T
 
-<code>{ [P in K]: T; }</code>
+<code>{
+ [P in K]: T;
+ }</code>
 
 
 #### PropertyKey
