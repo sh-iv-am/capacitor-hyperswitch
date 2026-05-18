@@ -2,14 +2,6 @@ import Foundation
 import Hyperswitch
 import UIKit
 
-struct PaymentConfirmData: Codable {
-    let paymentMethodData: String
-}
-
-let model = PaymentConfirmData(
-    paymentMethodData: "string"
-)
-
 public class HyperswitchImpl {
 
     // ── Singleton ──────────────────────────────────────────────────────────────
@@ -23,7 +15,7 @@ public class HyperswitchImpl {
     private var paymentSession: PaymentSession?
     private var currentSdkAuthorization: String?
 
-    private var paymentElementConfirm: PaymentResult?
+    private var paymentElementConfirm: PaymentResultCallback?
 
     // Containers placed by the plugins in webView.scrollView. The SDK widget
     // is attached lazily during createElement(), once paymentSession exists.
@@ -162,7 +154,13 @@ public class HyperswitchImpl {
                     paymentSession: paymentSession,
                     configuration: configMap,
                     completion: { [weak self] completion in
-                        self?.paymentElementConfirm = completion
+                        guard let self = self else { return }
+                        self.paymentElementConfirm?(self.paymentResultToDict(completion))
+                        self.fireEvent(
+                            type: "onPaymentResultEvent",
+                            payload: self.paymentResultToDict(completion),
+                            source: "onPaymentResultEvent"
+                        )
                     },
                     subscribe: { [weak self] builder in
                         self?.bindPaymentElementEvents(builder: builder, subscribed: subscribedEvents, source: "paymentElement")
@@ -171,7 +169,7 @@ public class HyperswitchImpl {
                 paymentElementref.shouldProceedWithPayment { data, callback in
                     self.onPaymentConfirmCallback = callback
                     do {
-                        let data = try JSONEncoder().encode(model)
+                        let data = try JSONEncoder().encode(data)
                         let dictionary =
                             try JSONSerialization.jsonObject(
                                 with: data
@@ -335,9 +333,7 @@ public class HyperswitchImpl {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             paymentWidget.confirm()
-            if let paymentElementConfirm = paymentElementConfirm {
-                onResult(self.paymentResultToDict(paymentElementConfirm))
-            }
+            paymentElementConfirm = onResult
         }
     }
 
