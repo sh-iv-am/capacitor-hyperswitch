@@ -1,6 +1,7 @@
 import Foundation
 import Hyperswitch
 import UIKit
+
 struct PaymentConfirmData: Codable {
     let paymentMethodData: String
 }
@@ -66,7 +67,7 @@ public class HyperswitchImpl {
 
     private var paymentWidget: PaymentWidget? { paymentElementContainer?.widget }
     private var cvcWidget: CVCWidget? { cvcWidgetContainer?.widget }
-    private var onPaymentConfirmCallback : ((Bool) -> Void)? = nil
+    private var onPaymentConfirmCallback: ((Bool) -> Void)? = nil
     // ── Init ───────────────────────────────────────────────────────────────────
 
     func initialize(
@@ -77,9 +78,14 @@ public class HyperswitchImpl {
         environment: String?
     ) {
         var customEndpointConfiguration: CustomEndpointConfiguration?
-        if let customEndpointConfig = customConfig?["CustomEndpointConfiguration"] as? String {
-            customEndpointConfiguration = CustomEndpointConfiguration.customEndpoint(customEndpointConfig)
+        var environmentConfig: HyperswitchEnvironment?
+
+        if let customEndpointConfig = customConfig?["CustomEndpointConfiguration"] as? [String: Any],
+            let config = customEndpointConfig["customEndpointConfig"] as? String
+        {
+            customEndpointConfiguration = CustomEndpointConfiguration.commonEndpoint(config)
         }
+
         if let overrideEndpontConfiguration = customConfig?["OverrideEndpontConfiguration"] as? [String: Any] {
             let config = OverrideEndpointConfiguration(
                 backendEndpoint: overrideEndpontConfiguration["customBackendEndpoint"] as? String,
@@ -91,10 +97,15 @@ public class HyperswitchImpl {
             customEndpointConfiguration = CustomEndpointConfiguration.overrideEndpoints(config)
         }
 
+        if let environment = environment {
+            environmentConfig = HyperswitchEnvironment(rawValue: environment.lowercased())
+        }
+
         let hyperswitchConfiguration = HyperswitchConfiguration(
             publishableKey: publishableKey,
             profileId: profileId,
-            customConfig: customEndpointConfiguration
+            customEndpoints: customEndpointConfiguration,
+            environment: environmentConfig
         )
         self.hyperswitch = Hyperswitch(configuration: hyperswitchConfiguration)
     }
@@ -161,16 +172,20 @@ public class HyperswitchImpl {
                     self.onPaymentConfirmCallback = callback
                     do {
                         let data = try JSONEncoder().encode(model)
-                            let dictionary = try JSONSerialization.jsonObject(
+                        let dictionary =
+                            try JSONSerialization.jsonObject(
                                 with: data
                             ) as? [String: Any]
-                        self.fireEvent(type: "onPaymentConfirmButtonClickEvent", payload: dictionary, source: "onPaymentConfirmButtonClickEvent")
+                        self.fireEvent(
+                            type: "onPaymentConfirmButtonClickEvent",
+                            payload: dictionary,
+                            source: "onPaymentConfirmButtonClickEvent"
+                        )
 
                     } catch {
                         print(error)
                     }
                 }
-                
                 print("[Hyperswitch] PaymentElement created and placed successfully")
 
             } else if lower == "cvcwidget" || lower == "cvc" {
@@ -190,10 +205,9 @@ public class HyperswitchImpl {
             }
         }
     }
-    
-    func resolvePaymentConfirmButtonClick(proceed: Bool){
+    func resolvePaymentConfirmButtonClick(proceed: Bool) {
         let cb = self.onPaymentConfirmCallback
-        if(cb != nil) {
+        if cb != nil {
             cb?(proceed)
         }
     }

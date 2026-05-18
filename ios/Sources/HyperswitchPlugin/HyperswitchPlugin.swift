@@ -224,8 +224,7 @@ public class HyperswitchPlugin: CAPPlugin, CAPBridgedPlugin {
             onError: { msg in call.reject(msg) }
         )
     }
-    
-    
+
     @objc func resolvePaymentConfirmButtonClick(_ call: CAPPluginCall) {
         let proceed = call.getBool("proceed")
 
@@ -233,7 +232,6 @@ public class HyperswitchPlugin: CAPPlugin, CAPBridgedPlugin {
             proceed: proceed ?? false
         )
     }
-    
 
     // ── PaymentElement lifecycle stubs ─────────────────────────────────────────
     // These are no-ops on iOS; mounting/unmounting is handled natively by
