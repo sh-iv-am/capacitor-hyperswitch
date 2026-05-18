@@ -370,6 +370,21 @@ public class HyperswitchImpl {
         PaymentSessionConfiguration newConfig = new PaymentSessionConfiguration(sdkAuthorization);
 
         sdkAuth = sdkAuthorization;
+        for (Map.Entry<String, PaymentSessionHandler> entry : handlerRegistry.entrySet()) {
+            PaymentSessionHandler handler = entry.getValue();
+
+            if (handler != null) {
+                try {
+                    handler.updateSdkAuthorization(sdkAuthorization);
+                } catch (Exception e) {
+                    Logger.error(
+                            "Hyperswitch",
+                            "Failed updating handler: " + entry.getKey(),
+                            e
+                    );
+                }
+            }
+        }
 
         // Callback overload: updateIntent(completion, onResult)
         // The completion lambda is called by the SDK to fetch the new config — we return it
