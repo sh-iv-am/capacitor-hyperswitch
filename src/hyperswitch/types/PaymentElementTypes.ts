@@ -1,8 +1,9 @@
-import { PaymentEventData, PaymentResult } from './PaymentTypes';
+import { PaymentEventData, PaymentRequestData, PaymentResult } from './PaymentTypes';
 
 export interface PaymentElement {
   on(event: string, handler?: (data?: PaymentEventData) => void): void;
   onPaymentResult(handler?: (data: PaymentResult) => void): void;
+  onPaymentConfirmButtonClick(handler?: (data?: PaymentRequestData) => boolean): void;
   collapse(): void;
   blur(): void;
   update(options: Record<string, Object>): void;
@@ -34,6 +35,7 @@ export interface PaymentElementProps {
   onReady?: () => void;
   onChange?: (data?: PaymentEventData) => void;
   onPaymentResult?: (data: PaymentResult) => void;
+  onPaymentConfirmButtonClick?: (data?: PaymentRequestData) => boolean;
   className?: string;
   style?: string;
 }

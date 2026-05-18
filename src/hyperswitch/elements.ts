@@ -9,6 +9,7 @@ import type {
   CvcWidgetOptions,
   PaymentSessionConfiguration,
   CustomerSavedPaymentMethodsSession,
+  PaymentRequestData,
 } from './definitions';
 import { paymentElementPlugin } from './views/payment-element/index';
 import { cvcWidgetPlugin } from './views/cvc-widget/index';
@@ -116,6 +117,19 @@ export function createPaymentElement(plugin: HyperswitchPlugin, options?: Paymen
       if (!handler) return;
       plugin.addListener('onPaymentResultEvent', (eventData: PaymentEventData) => {
         handler(toPaymentResult(eventData));
+      });
+    },
+    onPaymentConfirmButtonClick(handler?: (data: PaymentRequestData) => boolean): void {
+      if (!handler) return;
+      plugin.addListener('onPaymentConfirmButtonClickEvent', (eventData: PaymentEventData) => {
+        try {
+          let data = eventData.payload as PaymentRequestData || {};
+          data.paymentMethodType = data.paymentMethodType?.toUpperCase() || '';
+          const proceed = handler(data) !== false;
+          plugin.resolvePaymentConfirmButtonClick({ proceed });
+        } catch (e) {
+          plugin.resolvePaymentConfirmButtonClick({ proceed: false });
+        }
       });
     },
     collapse(): void {

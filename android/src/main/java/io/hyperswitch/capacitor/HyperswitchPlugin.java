@@ -30,6 +30,7 @@ public class HyperswitchPlugin extends Plugin {
                 case "paymentElement" -> "paymentElementEvent";
                 case "cvcWidget" -> "cvcWidgetEvent";
                 case "onPaymentResultEvent" -> "onPaymentResultEvent";
+                case "onPaymentConfirmButtonClickEvent" -> "onPaymentConfirmButtonClickEvent";
                 default -> "paymentEvent";
             };
             notifyListeners(channel, data);
@@ -212,6 +213,13 @@ public class HyperswitchPlugin extends Plugin {
                 call.reject(message);
             }
         });
+    }
+
+    @PluginMethod
+    public void resolvePaymentConfirmButtonClick(PluginCall call) {
+        boolean proceed = Boolean.TRUE.equals(call.getBoolean("proceed"));
+        implementation.resolvePaymentConfirmButtonClick(proceed);
+        call.resolve();
     }
 
     @PluginMethod

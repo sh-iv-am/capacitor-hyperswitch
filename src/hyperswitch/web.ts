@@ -254,9 +254,13 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
   // addListener is provided by WebPlugin base class; this override satisfies the
   // HyperswitchPlugin interface typing for the 'paymentEvent' event.
   addListener(
-    event: 'paymentElementEvent' | 'cvcWidgetEvent' | 'onPaymentResultEvent',
+    event: 'paymentElementEvent' | 'cvcWidgetEvent' | 'onPaymentResultEvent' | 'onPaymentConfirmButtonClickEvent',
     handler: (data: import('./definitions').PaymentEventData) => void,
   ): Promise<{ remove: () => Promise<void> }> {
     return super.addListener(event, handler);
+  }
+
+  async resolvePaymentConfirmButtonClick(options: { proceed: boolean }): Promise<void> {
+    console.log('RESOLVE_PAYMENT_CONFIRM_BUTTON_CLICK', options);
   }
 }
