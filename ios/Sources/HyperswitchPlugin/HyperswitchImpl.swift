@@ -80,11 +80,11 @@ public class HyperswitchImpl {
 
         if let overrideEndpontConfiguration = customConfig?["OverrideEndpontConfiguration"] as? [String: Any] {
             let config = OverrideEndpointConfiguration(
-                backendEndpoint: overrideEndpontConfiguration["customBackendEndpoint"] as? String,
-                assetsEndpoint: overrideEndpontConfiguration["customAssetEndpoint"] as? String,
-                sdkConfigEndpoint: overrideEndpontConfiguration["customSDKConfigEndpoint"] as? String,
-                airborneEndpoint: overrideEndpontConfiguration["customAirborneEndpoint"] as? String,
-                loggingEndpoint: overrideEndpontConfiguration["customLoggingEndpoint"] as? String
+                customBackendEndpoint: overrideEndpontConfiguration["customBackendEndpoint"] as? String,
+                customAssetEndpoint: overrideEndpontConfiguration["customAssetEndpoint"] as? String,
+                customSDKConfigEndpoint: overrideEndpontConfiguration["customSDKConfigEndpoint"] as? String,
+                customAirborneEndpoint: overrideEndpontConfiguration["customAirborneEndpoint"] as? String,
+                customLoggingEndpoint: overrideEndpontConfiguration["customLoggingEndpoint"] as? String
             )
             customEndpointConfiguration = CustomEndpointConfiguration.overrideEndpoints(config)
         }
@@ -135,7 +135,9 @@ public class HyperswitchImpl {
     /// Builds the SDK widget with session data and attaches it to the container
     /// the plugin already placed in the scrollView during create().
     func createElement(type: String, createOptions: [String: Any]?) {
-        guard let paymentSession = paymentSession else {
+        guard let paymentSession = paymentSession,
+            let hyperswitch = hyperswitch
+        else {
             print("[Hyperswitch] elements() must be called before createElement()")
             return
         }
@@ -192,6 +194,7 @@ public class HyperswitchImpl {
                     return
                 }
                 container.attach(
+                    hyperswitch: hyperswitch,
                     paymentSession: paymentSession,
                     configuration: configMap
                 ) { [weak self] builder in

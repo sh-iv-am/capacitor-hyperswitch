@@ -7,12 +7,13 @@ public final class CVCWidgetContainer: UIView {
 
     @discardableResult
     func attach(
+        hyperswitch: Hyperswitch,
         paymentSession: PaymentSession,
         configuration: [String: Any] = [:],
         subscribe: ((PaymentEventSubscriptionBuilder) -> Void)? = nil
     ) -> CVCWidget {
         if let existing = widget { return existing }
-        let widget = CVCWidget(configurationDict: configuration, subscribe: subscribe)
+        let widget = CVCWidget(hyperswitch: hyperswitch, configurationDict: configuration, subscribe: subscribe)
         widget.frame = bounds
         //        widget.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         addSubview(widget)
