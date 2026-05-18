@@ -4,6 +4,8 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Logger;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -36,6 +38,7 @@ import kotlin.Unit;
 import kotlin.coroutines.Continuation;
 import kotlin.coroutines.CoroutineContext;
 import kotlin.coroutines.EmptyCoroutineContext;
+import kotlin.jvm.functions.Function1;
 
 public class HyperswitchImpl {
 
@@ -317,6 +320,21 @@ public class HyperswitchImpl {
                         fireEvent("onPaymentResultEvent", jsObjectToMap(paymentResultToJSObject(paymentResult)), "onPaymentResultEvent");
                     }
                 });
+                paymentElementBound.onPaymentConfirmButtonClick(
+                        (paymentRequestData, callback) -> {
+                            try {
+                                pendingConfirmButtonCallback = (Function1<Boolean, Unit>) callback;
+                                JSONObject jsonObject = new JSONObject();
+                                jsonObject.put("paymentMethodType", paymentRequestData.getPaymentMethodType());
+                                fireEvent("onPaymentConfirmButtonClickEvent",
+                                        ConversionUtils.readableMapToMap(ConversionUtils.convertJsonToMap(jsonObject)),
+                                        "onPaymentConfirmButtonClickEvent");
+                            } catch (JSONException e) {
+                                throw new RuntimeException(e);
+                            }
+                            return Unit.INSTANCE;
+                        }
+                );
                 Logger.info("Hyperswitch", "PaymentElement bound with configuration Map");
 
             } else if ("cvcWidget".equalsIgnoreCase(type) || "cvc".equalsIgnoreCase(type)) {
@@ -528,6 +546,19 @@ public class HyperswitchImpl {
                 return null;
             })
         );
+    }
+
+    // ── OnPaymentConfirmButtonClick ──────────────────────────────────────────────────────────
+
+    private volatile Function1 <Boolean, Unit> pendingConfirmButtonCallback;
+
+
+    public void resolvePaymentConfirmButtonClick(boolean proceed) {
+        kotlin.jvm.functions.Function1<Boolean, Unit> cb = pendingConfirmButtonCallback;
+        pendingConfirmButtonCallback = null;
+        if (cb != null) {
+            cb.invoke(proceed);
+        }
     }
 
     // ── CustomerSavedPaymentMethods ───────────────────────────────────────────────────────────

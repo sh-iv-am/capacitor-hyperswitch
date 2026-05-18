@@ -40,6 +40,8 @@ export interface HyperswitchPlugin {
   // PaymentElement confirm
   confirmPayment(options: { confirmParams: Record<string, Object> }): Promise<PaymentResult>;
 
+  resolvePaymentConfirmButtonClick(options: { proceed: boolean }): Promise<void>;
+
   // Legacy payment session
   initPaymentSession(options: { paymentSessionOptions: PaymentSessionConfiguration }): Promise<void>;
   presentPaymentSheet(options: { sheetOptions: PaymentSheetOptions }): Promise<PaymentResult>;
@@ -65,6 +67,10 @@ export interface HyperswitchPlugin {
   ): Promise<{ remove: () => Promise<void> }>;
   addListener(
     event: 'onPaymentResultEvent',
+    handler: (data: PaymentEventData) => void,
+  ): Promise<{ remove: () => Promise<void> }>;
+  addListener(
+    event: 'onPaymentConfirmButtonClickEvent',
     handler: (data: PaymentEventData) => void,
   ): Promise<{ remove: () => Promise<void> }>;
 }
