@@ -6,10 +6,10 @@ export type SubscriptionEvent =
   | 'FORM_STATUS'
   | 'PAYMENT_METHOD_INFO_BILLING_ADDRESS'
 
-export type Theme = 'Default' | 'Light' | 'Dark' | 'Minimal' | 'FlatMinimal';
+export type Theme = 'Default' | 'Light' | 'Dark' | 'Minimal' | 'FlatMinimal' | 'Brutal' | 'Glass' | 'Skeu' | 'Clay' | 'Charcoal' | 'Soft';
 export type LayoutType = 'tabs' | 'accordion';
 export type PaymentMethodsArrangement = 'grid' | 'auto';
-export type RedirectionInfo = 'hidden' | 'visible';
+export type RedirectionInfo = 'hidden' | 'shown';
 export type CvcIconDisplay = 'shown' | 'hidden';
 
 export interface GroupingBehavior {
@@ -61,6 +61,7 @@ export interface GooglePayThemeBaseStyle {
 }
 
 export interface GooglePayConfiguration {
+  visibility?: 'hidden' | 'shown';
   buttonType?: GooglePayButtonType;
   buttonStyle?: GooglePayThemeBaseStyle;
 }
@@ -74,17 +75,34 @@ export interface ApplePayThemeBaseStyle {
 }
 
 export interface ApplePayConfiguration {
+  visibility?: 'hidden' | 'shown';
   buttonType?: ApplePayButtonType;
   buttonStyle?: ApplePayThemeBaseStyle;
+}
+
+export type PayPalButtonType = 'paypal' | 'checkout' | 'buynow' | 'pay';
+export type PayPalButtonStyle = 'gold' | 'blue' | 'white' | 'black' | 'silver';
+
+export interface PayPalThemeBaseStyle {
+  light?: PayPalButtonStyle;
+  dark?: PayPalButtonStyle;
+}
+
+export interface PayPalConfiguration {
+  visibility?: 'hidden' | 'shown';
+  buttonType?: PayPalButtonType;
+  buttonStyle?: PayPalThemeBaseStyle;
 }
 
 export interface WalletButtonsConfiguration {
   googlePay?: GooglePayConfiguration;
   applePay?: ApplePayConfiguration;
+  payPal?: PayPalConfiguration;
 }
 
 export interface LogoColors {
   backgroundColor?: string;
+  selected?: string;
   unselected?: string;
 }
 
@@ -95,6 +113,7 @@ export interface LogoColorType {
 
 export interface CheckedIconColors {
   color?: string;
+  stroke?: string;
 }
 
 export interface CheckedIconColorType {
@@ -104,6 +123,9 @@ export interface CheckedIconColorType {
 
 export interface CheckedIconForSelection {
   colors?: CheckedIconColorType;
+  size?: number;
+  bottom?: number;
+  right?: number;
 }
 
 export interface LogoCustomization {
@@ -134,6 +156,7 @@ export interface Address {
   country?: string;
   line1?: string;
   line2?: string;
+  line3?: string;
   postalCode?: string;
   state?: string;
 }
@@ -224,4 +247,7 @@ export interface PaymentSheetOptions {
   walletButtonsConfiguration?: WalletButtonsConfiguration;
   paymentMethodsConfig?: PaymentMethodConfig[];
   paymentMethodOrder?: string[];
+  preloadCardElement?: boolean;
+  alwaysSendCustomerAcceptance?: boolean;
+  opensCardScannerAutomatically?: boolean;
 }
