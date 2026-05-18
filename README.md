@@ -1311,7 +1311,6 @@ Creates a new function.
 
 | Prop                                               | Type                                                                              |
 | -------------------------------------------------- | --------------------------------------------------------------------------------- |
-| **`sdkAuthorization`**                             | <code>string</code>                                                               |
 | **`allowsDelayedPaymentMethods`**                  | <code>boolean</code>                                                              |
 | **`appearance`**                                   | <code><a href="#appearance">Appearance</a></code>                                 |
 | **`shippingDetails`**                              | <code><a href="#addressdetails">AddressDetails</a></code>                         |
@@ -1578,9 +1577,7 @@ Creates a new function.
 
 From T, pick a set of properties whose keys are in the union K
 
-<code>{
- [P in K]: T[P];
- }</code>
+<code>{ [P in K]: T[P]; }</code>
 
 
 #### PaymentMethod
@@ -1592,9 +1589,7 @@ From T, pick a set of properties whose keys are in the union K
 
 Construct a type with a set of properties K of type T
 
-<code>{
- [P in K]: T;
- }</code>
+<code>{ [P in K]: T; }</code>
 
 
 #### PropertyKey
@@ -1704,7 +1699,7 @@ Construct a type with a set of properties K of type T
 
 #### GooglePayButtonType
 
-<code>'buy' | 'book' | 'checkout' | 'donate' | 'order' | 'pay' | 'subscribe' | 'plain'</code>
+<code>'BUY' | 'BOOK' | 'CHECKOUT' | 'DONATE' | 'ORDER' | 'PAY' | 'SUBSCRIBE' | 'PLAIN'</code>
 
 
 #### GooglePayButtonStyle
