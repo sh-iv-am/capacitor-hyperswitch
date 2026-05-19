@@ -7,7 +7,6 @@ import com.getcapacitor.Logger;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,6 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import io.hyperswitch.CvcWidgetEvents;
 import io.hyperswitch.PaymentEvents;
 import io.hyperswitch.model.CustomEndpointConfiguration;
+import io.hyperswitch.model.OverrideEndpoints;
 import io.hyperswitch.model.ElementsUpdateResult;
 import io.hyperswitch.model.HyperswitchConfiguration;
 import io.hyperswitch.model.HyperswitchEnvironment;
@@ -33,11 +33,7 @@ import io.hyperswitch.utils.ConversionUtils;
 import io.hyperswitch.view.CVCWidget;
 import io.hyperswitch.view.PaymentElement;
 import io.hyperswitch.view.PaymentResultListener;
-import kotlin.Result;
 import kotlin.Unit;
-import kotlin.coroutines.Continuation;
-import kotlin.coroutines.CoroutineContext;
-import kotlin.coroutines.EmptyCoroutineContext;
 import kotlin.jvm.functions.Function1;
 
 public class HyperswitchImpl {
@@ -126,14 +122,18 @@ public class HyperswitchImpl {
 
         CustomEndpointConfiguration customEndpointConfig = null;
         if (customConfig != null) {
+            JSObject overrideObj = customConfig.getJSObject("overrideEndpoints");
+            OverrideEndpoints overrideEndpoints = overrideObj != null ? new OverrideEndpoints(
+                    overrideObj.getString("customBackendEndpoint"),
+                    overrideObj.getString("customLoggingEndpoint"),
+                    overrideObj.getString("customAssetEndpoint"),
+                    overrideObj.getString("customSDKConfigEndpoint"),
+                    overrideObj.getString("customConfirmEndpoint"),
+                    overrideObj.getString("customAirborneEndpoint")
+            ) : null;
             customEndpointConfig = new CustomEndpointConfiguration(
-                    customConfig.getString("customEndpoint"),
-                    customConfig.getString("overrideCustomBackendEndpoint"),
-                    customConfig.getString("overrideCustomAssetsEndpoint"),
-                    customConfig.getString("overrideCustomSDKConfigEndpoint"),
-                    customConfig.getString("overrideCustomConfirmEndpoint"),
-                    customConfig.getString("overrideCustomAirborneEndpoint"),
-                    customConfig.getString("overrideCustomLoggingEndpoint")
+                    overrideEndpoints,
+                    customConfig.getString("commonEndpoint")
             );
         }
 
@@ -146,26 +146,13 @@ public class HyperswitchImpl {
 
         Logger.info("Hyperswitch", "Initialized with publishableKey: " + publishableKey);
 
-        customBackendUrl = customEndpointConfig != null ?
-                customEndpointConfig.getOverrideCustomBackendEndpoint() != null ?
-                        customEndpointConfig.getOverrideCustomBackendEndpoint() : customEndpointConfig.getCustomEndpoint() : null;
-
-        customLoggingUrl = customEndpointConfig != null ?
-                customEndpointConfig.getOverrideCustomLoggingEndpoint() != null ?
-                        customEndpointConfig.getOverrideCustomLoggingEndpoint() : customEndpointConfig.getCustomEndpoint() : null;
-
-        if(customBackendUrl != null && customLoggingUrl != null) {
-            paymentSession = new PaymentSession(
-                    activity,
-                    publishableKey,
-                    customBackendUrl,
-                    customLoggingUrl
-            );
-        } else {
-            paymentSession = new PaymentSession(
-                    activity,
-                    publishableKey
-            );
+        if (customEndpointConfig != null) {
+            OverrideEndpoints oe = customEndpointConfig.getOverrideEndpoints();
+            String common = customEndpointConfig.getCommonEndpoint();
+            customBackendUrl = (oe != null && oe.getCustomBackendEndpoint() != null)
+                    ? oe.getCustomBackendEndpoint() : common;
+            customLoggingUrl = (oe != null && oe.getCustomLoggingEndpoint() != null)
+                    ? oe.getCustomLoggingEndpoint() : common;
         }
 
         hyperswitchInstance = Hyperswitch.INSTANCE.init(
@@ -225,7 +212,7 @@ public class HyperswitchImpl {
         unbindPaymentElement();
         unbindCvcWidget();
 
-        if (paymentSession == null) {
+        if (hyperswitchInstance == null) {
             if (callback != null) callback.onError("Hyperswitch not initialised — call init() first");
             return;
         }
@@ -240,21 +227,16 @@ public class HyperswitchImpl {
         }
 
         sdkAuth = sdkAuthorization;
-        // Create Elements session using the callback-based overload
 
         PaymentSessionConfiguration sessionConfig = new PaymentSessionConfiguration(sdkAuthorization);
 
-        hyperswitchInstance.initPaymentSession(
-                sessionConfig,
-                session -> {
-                    this.paymentSession = session;
-                    Logger.info("Hyperswitch", "initPaymentSession ready");
-                    return null;
-                }
-        );
-        // Create Elements session using the callback-based overload
+        // elements() creates its own internal PaymentSession — no separate initPaymentSession needed.
         hyperswitchInstance.elements(sessionConfig, elementsInstance -> {
             this.elements = elementsInstance;
+            // Expose the Elements-internal PaymentSession so that presentPaymentSheet /
+            // getCustomerSavedPaymentMethods can use it without a separate init call.
+            this.paymentSession = elementsInstance.getPaymentSession();
+            Logger.info("Hyperswitch", "elements ready");
             if (callback != null) callback.onReady("");
             return null;
         });
@@ -446,7 +428,7 @@ public class HyperswitchImpl {
     public void initPaymentSession(JSObject paymentSessionOptions, InitPaymentSessionCallback callback) {
         Logger.info("Hyperswitch", "initPaymentSession called");
 
-        if (paymentSession == null) {
+        if (hyperswitchInstance == null) {
             if (callback != null) callback.onError("Hyperswitch not initialised — call init() first");
             return;
         }
@@ -457,8 +439,7 @@ public class HyperswitchImpl {
 
         sdkAuth = sdkAuthorization;
 
-        paymentSession.initPaymentSession(sdkAuthorization != null ? sdkAuthorization : "");
-        
+        // initPaymentSession now takes a PaymentSessionConfiguration; the old String overload is gone.
         hyperswitchInstance.initPaymentSession(
                 new PaymentSessionConfiguration(sdkAuthorization != null ? sdkAuthorization : ""),
                 session -> {
@@ -600,56 +581,29 @@ public class HyperswitchImpl {
             return new JSObject();
         }
 
-        try {
-            Method method = handler.getClass().getMethod("getCustomerSavedPaymentMethodData-d1pmJ48");
-            if (method == null) {
-                result.put("error", "Method not found");
-                return result;
-            }
-
-            Object data = method.invoke(handler);
-            if (data == null) {
-                Logger.warn("Hyperswitch", "Received null data from getCustomerSavedPaymentMethodData");
-                result.put("data", new org.json.JSONArray());
-                return result;
-            }
-
-            if (data instanceof List) {
-                List<?> paymentMethods = (List<?>) data;
-                org.json.JSONArray jsonArray = new org.json.JSONArray();
-
-                for (int i = 0; i < paymentMethods.size(); i++) {
-                    Object pm = paymentMethods.get(i);
-                    if (pm instanceof io.hyperswitch.paymentsession.PaymentMethod) {
+        // Use the Java-friendly callback variant — called synchronously via Result.onSuccess/onFailure.
+        handler.getCustomerSavedPaymentMethodData(
+                paymentMethods -> {
+                    org.json.JSONArray jsonArray = new org.json.JSONArray();
+                    for (int i = 0; i < paymentMethods.size(); i++) {
+                        io.hyperswitch.paymentsession.PaymentMethod pm = paymentMethods.get(i);
                         try {
-                            Map<String, Object> map = ((io.hyperswitch.paymentsession.PaymentMethod) pm).toMap();
-                            if (map != null) {
-                                jsonArray.put(new org.json.JSONObject(map));
-                            }
+                            Map<String, Object> map = pm.toMap();
+                            if (map != null) jsonArray.put(new org.json.JSONObject(map));
                         } catch (Exception e) {
                             Logger.error("Hyperswitch", "Failed to convert PaymentMethod at index " + i, e);
                         }
                     }
+                    result.put("data", jsonArray);
+                    return null;
+                },
+                throwable -> {
+                    String msg = throwable != null ? throwable.getMessage() : "Unknown error";
+                    Logger.error("Hyperswitch", "getCustomerSavedPaymentMethodData failed: " + msg, throwable);
+                    result.put("error", msg);
+                    return null;
                 }
-                result.put("data", jsonArray);
-            } else {
-                Logger.warn("Hyperswitch", "Unexpected data type: " + data.getClass().getName());
-                result.put("error", "Unexpected data type");
-            }
-        } catch (NoSuchMethodException e) {
-            Logger.error("Hyperswitch", "Method not found in handler", e);
-            result.put("error", "Method not available: " + e.getMessage());
-        } catch (IllegalAccessException e) {
-            Logger.error("Hyperswitch", "Cannot access method", e);
-            result.put("error", "Access denied: " + e.getMessage());
-        } catch (java.lang.reflect.InvocationTargetException e) {
-            Throwable cause = e.getCause();
-            Logger.error("Hyperswitch", "Method invocation failed", cause != null ? cause : e);
-            result.put("error", "Invocation failed: " + (cause != null ? cause.getMessage() : e.getMessage()));
-        } catch (Exception e) {
-            Logger.error("Hyperswitch", "Unexpected error in getCustomerSavedPaymentMethodData", e);
-            result.put("error", "Unexpected error: " + e.getMessage());
-        }
+        );
         return result;
     }
 
@@ -670,45 +624,29 @@ public class HyperswitchImpl {
             return result;
         }
 
-        try {
-            Method method = handler.getClass().getMethod("getCustomerDefaultSavedPaymentMethodData-d1pmJ48");
-            if (method == null) {
-                result.put("error", "Method not found");
-                return result;
-            }
-
-            Object data = method.invoke(handler);
-            if (data == null) {
-                Logger.warn("Hyperswitch", "Received null data from getCustomerDefaultSavedPaymentMethodData");
-                result.put("data", org.json.JSONObject.NULL);
-                return result;
-            }
-
-            if (data instanceof io.hyperswitch.paymentsession.PaymentMethod) {
-                Map<String, Object> map = ((io.hyperswitch.paymentsession.PaymentMethod) data).toMap();
-                if (map != null) {
-                    result.put("data", new org.json.JSONObject(map));
-                } else {
-                    result.put("error", "toMap() returned null");
+        // Use the Java-friendly callback variant — called synchronously via Result.onSuccess/onFailure.
+        handler.getCustomerDefaultSavedPaymentMethodData(
+                paymentMethod -> {
+                    try {
+                        Map<String, Object> map = paymentMethod.toMap();
+                        if (map != null) {
+                            result.put("data", new org.json.JSONObject(map));
+                        } else {
+                            result.put("error", "toMap() returned null");
+                        }
+                    } catch (Exception e) {
+                        Logger.error("Hyperswitch", "Failed to serialize default PaymentMethod", e);
+                        result.put("error", "Serialization error: " + e.getMessage());
+                    }
+                    return null;
+                },
+                throwable -> {
+                    String msg = throwable != null ? throwable.getMessage() : "Unknown error";
+                    Logger.error("Hyperswitch", "getCustomerDefaultSavedPaymentMethodData failed: " + msg, throwable);
+                    result.put("error", msg);
+                    return null;
                 }
-            } else {
-                Logger.warn("Hyperswitch", "Unexpected data type: " + data.getClass().getName());
-                result.put("error", "Unexpected data type: " + data.getClass().getSimpleName());
-            }
-        } catch (NoSuchMethodException e) {
-            Logger.error("Hyperswitch", "Method not found in handler", e);
-            result.put("error", "Method not available: " + e.getMessage());
-        } catch (IllegalAccessException e) {
-            Logger.error("Hyperswitch", "Cannot access method", e);
-            result.put("error", "Access denied: " + e.getMessage());
-        } catch (java.lang.reflect.InvocationTargetException e) {
-            Throwable cause = e.getCause();
-            Logger.error("Hyperswitch", "Method invocation failed", cause != null ? cause : e);
-            result.put("error", "Invocation failed: " + (cause != null ? cause.getMessage() : e.getMessage()));
-        } catch (Exception e) {
-            Logger.error("Hyperswitch", "Unexpected error in getCustomerDefaultSavedPaymentMethodData", e);
-            result.put("error", "Unexpected error: " + e.getMessage());
-        }
+        );
         return result;
     }
 
@@ -769,12 +707,14 @@ public class HyperswitchImpl {
         Logger.info("Hyperswitch", "confirmWithCustomerDefaultPaymentMethod called, id=" + handlerId);
         PaymentSessionHandler handler = handlerRegistry.get(handlerId);
         if (handler == null) {
-
             if (callback != null) callback.onError("No handler for id: " + handlerId);
             return;
         }
         activity.runOnUiThread(() ->
-            handler.confirmWithCustomerDefaultPaymentMethod(cvcWidgetView, resumeWithPaymentResult(callback))
+            handler.confirmWithCustomerDefaultPaymentMethod(cvcWidgetView, result -> {
+                if (callback != null) callback.onResult(paymentResultToJSObject(result));
+                return null;
+            })
         );
     }
 
@@ -786,33 +726,11 @@ public class HyperswitchImpl {
             return;
         }
         activity.runOnUiThread(() ->
-            handler.confirmWithCustomerLastUsedPaymentMethod(cvcWidgetView, resumeWithPaymentResult(callback))
+            handler.confirmWithCustomerLastUsedPaymentMethod(cvcWidgetView, result -> {
+                if (callback != null) callback.onResult(paymentResultToJSObject(result));
+                return null;
+            })
         );
-    }
-
-    /** Builds a bare-minimum Continuation that forwards the suspend result to our callback. */
-    private Continuation<PaymentResult> resumeWithPaymentResult(PaymentResultCallback callback) {
-        return new Continuation<PaymentResult>() {
-            @Override
-            public CoroutineContext getContext() {
-                return EmptyCoroutineContext.INSTANCE;
-            }
-
-            @Override
-            public void resumeWith(Object result) {
-
-                if (callback == null) return;
-                if (result instanceof Result.Failure) {
-                    Throwable t = ((Result.Failure) result).exception;
-                    callback.onResult(paymentResultToJSObject(new PaymentResult.Failed(t)));
-                } else if (result instanceof PaymentResult) {
-                    callback.onResult(paymentResultToJSObject((PaymentResult) result));
-                } else {
-                    Throwable t = new Throwable("Unexpected result type: " + (result != null ? result.getClass().getName() : "null"));
-                    callback.onResult(paymentResultToJSObject(new PaymentResult.Failed(t)));
-                }
-            }
-        };
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────────────────────

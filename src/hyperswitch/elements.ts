@@ -268,7 +268,7 @@ export function createCvcWidget(plugin: HyperswitchPlugin, options?: CvcWidgetOp
       cvcWidgetPlugin.destroy();
       mountedElement = null;
     },
-    on(event: string, handler?: (data?: PaymentEventData) => void): removeListenerFunction | void {
+    on(event: string, handler?: (data?: PaymentEventData) => void): removeListenerFunction | null {
       if (!handler) return { remove: () => {} };
       if (!eventHandlers.has(event)) {
         eventHandlers.set(event, []);

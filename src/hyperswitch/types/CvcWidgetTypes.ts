@@ -1,4 +1,4 @@
-import { removeListenerFunction } from '../..';
+import { removeListenerFunction } from './PaymentElementTypes';
 import { ColorType, Font, Shapes } from './AppearanceTypes';
 import { PaymentEventData } from './PaymentTypes';
 
@@ -18,5 +18,5 @@ export interface CvcWidget {
   mount(selector: string, options?: CvcWidgetOptions): void;
   unmount(): void;
   destroy(): void;
-  on(event: string, handler?: (data?: PaymentEventData) => void): removeListenerFunction | void;
+  on(event: string, handler?: (data?: PaymentEventData) => void): removeListenerFunction | null;
 }

@@ -1,10 +1,6 @@
 import { Elements } from './ElementsTypes';
 import { PaymentSession } from './PaymentSessionTypes';
 
-export interface CustomEndpointConfiguration {
-  customEndpoint?: string;
-}
-
 export interface OverrideEndpontConfiguration {
   customBackendEndpoint?: string;
   customLoggingEndpoint?: string;
@@ -19,7 +15,10 @@ export interface HyperswitchConfiguration {
   publishableKey: string;
   profileId?: string;
   environment?: HyperswitchEnvironment;
-  customConfig?: CustomEndpointConfiguration | OverrideEndpontConfiguration;
+  customEndpoints?: {
+    commonEndpoint: string,
+    overrideEndpoints: OverrideEndpontConfiguration
+  };
 }
 
 export interface PaymentSessionConfiguration {

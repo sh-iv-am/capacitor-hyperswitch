@@ -97,7 +97,7 @@ createElement(options: { type: string; createOptions: PaymentElementOptions | Cv
 
 | Param         | Type                                                                                                                                                      |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`options`** | <code>{ type: string; createOptions: <a href="#cvcwidgetoptions">CvcWidgetOptions</a> \| <a href="#paymentsheetoptions">PaymentSheetOptions</a>; }</code> |
+| **`options`** | <code>{ type: string; createOptions: <a href="#paymentsheetoptions">PaymentSheetOptions</a> \| <a href="#cvcwidgetoptions">CvcWidgetOptions</a>; }</code> |
 
 --------------------
 
@@ -419,19 +419,12 @@ addListener(event: 'onPaymentConfirmButtonClickEvent', handler: (data: PaymentEv
 
 #### HyperswitchConfiguration
 
-| Prop                 | Type                                                                                                                                                            |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`publishableKey`** | <code>string</code>                                                                                                                                             |
-| **`profileId`**      | <code>string</code>                                                                                                                                             |
-| **`environment`**    | <code><a href="#hyperswitchenvironment">HyperswitchEnvironment</a></code>                                                                                       |
-| **`customConfig`**   | <code><a href="#customendpointconfiguration">CustomEndpointConfiguration</a> \| <a href="#overrideendpontconfiguration">OverrideEndpontConfiguration</a></code> |
-
-
-#### CustomEndpointConfiguration
-
-| Prop                 | Type                |
-| -------------------- | ------------------- |
-| **`customEndpoint`** | <code>string</code> |
+| Prop                  | Type                                                                                                                                  |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **`publishableKey`**  | <code>string</code>                                                                                                                   |
+| **`profileId`**       | <code>string</code>                                                                                                                   |
+| **`environment`**     | <code><a href="#hyperswitchenvironment">HyperswitchEnvironment</a></code>                                                             |
+| **`customEndpoints`** | <code>{ commonEndpoint: string; overrideEndpoints: <a href="#overrideendpontconfiguration">OverrideEndpontConfiguration</a>; }</code> |
 
 
 #### OverrideEndpontConfiguration
