@@ -23,7 +23,7 @@ export function createPaymentSessionHandler(
       return new Promise(async (resolve, reject) => {
         let result = await plugin.getCustomerDefaultSavedPaymentMethodData({ handlerId });
         let data = result.data;
-        if (data) resolve({...data, payment_method: data.payment_method_str ?? data.payment_method});
+        if (data) resolve({ ...data, payment_method: data.payment_method_str ?? data.payment_method });
         else reject(result);
       });
     },
@@ -32,7 +32,7 @@ export function createPaymentSessionHandler(
       return new Promise(async (resolve, reject) => {
         let result = await plugin.getCustomerLastUsedPaymentMethodData({ handlerId });
         let data = result.data;
-        if (data) resolve({...data, payment_method: data.payment_method_str ?? data.payment_method});
+        if (data) resolve({ ...data, payment_method: data.payment_method_str ?? data.payment_method });
         else reject(result);
       });
     },

@@ -6,9 +6,11 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
-
+import org.json.JSONArray;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import io.hyperswitch.paymentsession.SavedPaymentMethodsConfiguration;
 
 @CapacitorPlugin(name = "Hyperswitch")
 public class HyperswitchPlugin extends Plugin {
@@ -124,7 +126,24 @@ public class HyperswitchPlugin extends Plugin {
     @PluginMethod
     public void getCustomerSavedPaymentMethods(PluginCall call) {
         call.setKeepAlive(true);
-        implementation.getCustomerSavedPaymentMethods(new HyperswitchImpl.CustomerSavedPaymentMethodsCallback() {
+
+        SavedPaymentMethodsConfiguration config = null;
+        JSObject configObj = call.getObject("configuration");
+        if (configObj != null) {
+            JSONArray arr = configObj.optJSONArray("hiddenPaymentMethods");
+            if (arr != null) {
+                ArrayList<String> hiddenPaymentMethods = new ArrayList<>();
+                for (int i = 0; i < arr.length(); i++) {
+                    try {
+                        String val = arr.getString(i);
+                        if (val != null) hiddenPaymentMethods.add(val);
+                    } catch (Exception ignored) {}
+                }
+                config = new SavedPaymentMethodsConfiguration(hiddenPaymentMethods);
+            }
+        }
+
+        implementation.getCustomerSavedPaymentMethods(config, new HyperswitchImpl.CustomerSavedPaymentMethodsCallback() {
             @Override
             public void onReady(String handlerId) {
                 JSObject result = new JSObject();

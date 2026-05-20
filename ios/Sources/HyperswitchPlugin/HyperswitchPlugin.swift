@@ -159,6 +159,7 @@ public class HyperswitchPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func getCustomerSavedPaymentMethods(_ call: CAPPluginCall) {
         impl.getCustomerSavedPaymentMethods(
+            configuration: call.getObject("configuration") as? [String: Any],
             onReady: { handlerId in call.resolve(["handlerId": handlerId]) },
             onError: { msg in call.reject(msg) }
         )

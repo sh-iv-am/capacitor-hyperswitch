@@ -4,9 +4,20 @@ export type SubscriptionEvent =
   | 'PAYMENT_METHOD_INFO_CARD'
   | 'PAYMENT_METHOD_STATUS'
   | 'FORM_STATUS'
-  | 'PAYMENT_METHOD_INFO_BILLING_ADDRESS'
+  | 'PAYMENT_METHOD_INFO_BILLING_ADDRESS';
 
-export type Theme = 'Default' | 'Light' | 'Dark' | 'Minimal' | 'FlatMinimal' | 'Brutal' | 'Glass' | 'Skeu' | 'Clay' | 'Charcoal' | 'Soft';
+export type Theme =
+  | 'Default'
+  | 'Light'
+  | 'Dark'
+  | 'Minimal'
+  | 'FlatMinimal'
+  | 'Brutal'
+  | 'Glass'
+  | 'Skeu'
+  | 'Clay'
+  | 'Charcoal'
+  | 'Soft';
 export type LayoutType = 'tabs' | 'accordion';
 export type PaymentMethodsArrangement = 'grid' | 'auto';
 export type RedirectionInfo = 'hidden' | 'shown';
@@ -17,12 +28,17 @@ export interface GroupingBehavior {
   groupByPaymentMethods?: boolean;
 }
 
+export interface SavedPaymentMethodsConfiguration {
+  hiddenPaymentMethods?: string[];
+}
+
 export interface SavedMethodCustomization {
   defaultCollapsed?: boolean;
   hideCardExpiry?: boolean;
   hideCVCError?: boolean;
   cvcIcon?: CvcIconDisplay;
   groupingBehavior?: GroupingBehavior;
+  hiddenPaymentMethods?: string[];
 }
 
 export interface PaymentMethodLayout {
@@ -50,6 +66,7 @@ export interface PrimaryButtonColorType {
 export interface PrimaryButton {
   shapes?: Shapes;
   colors?: PrimaryButtonColorType;
+  height?: number;
 }
 
 export type GooglePayButtonType = 'BUY' | 'BOOK' | 'CHECKOUT' | 'DONATE' | 'ORDER' | 'PAY' | 'SUBSCRIBE' | 'PLAIN';
@@ -183,36 +200,36 @@ export interface PaymentMethodConfig {
 }
 
 type locale =
-  | "en"
-  | "he"
-  | "fr"
-  | "en-GB"
-  | "ar"
-  | "ja"
-  | "de"
-  | "fr-BE"
-  | "es"
-  | "ca"
-  | "pt"
-  | "it"
-  | "pl"
-  | "nl"
-  | "nI-BE"
-  | "sv"
-  | "ru"
-  | "lt"
-  | "cs"
-  | "sk"
-  | "ls"
-  | "cy"
-  | "el"
-  | "et"
-  | "fi"
-  | "nb"
-  | "bs"
-  | "da"
-  | "ms"
-  | "tr-CY"
+  | 'en'
+  | 'he'
+  | 'fr'
+  | 'en-GB'
+  | 'ar'
+  | 'ja'
+  | 'de'
+  | 'fr-BE'
+  | 'es'
+  | 'ca'
+  | 'pt'
+  | 'it'
+  | 'pl'
+  | 'nl'
+  | 'nI-BE'
+  | 'sv'
+  | 'ru'
+  | 'lt'
+  | 'cs'
+  | 'sk'
+  | 'ls'
+  | 'cy'
+  | 'el'
+  | 'et'
+  | 'fi'
+  | 'nb'
+  | 'bs'
+  | 'da'
+  | 'ms'
+  | 'tr-CY';
 
 export interface PaymentSheetOptions {
   sdkAuthorization?: string;

@@ -2,7 +2,7 @@ import { HyperswitchConfiguration } from './types/HyperswitchSessionTypes';
 import { PaymentSessionConfiguration } from './types/HyperswitchSessionTypes';
 import { PaymentResult, PaymentEventData } from './definitions';
 import { PaymentMethodData, PaymentMethodListData } from './types/PaymentMethodTypes';
-import { PaymentSheetOptions } from './definitions';
+import { PaymentSheetOptions, SavedPaymentMethodsConfiguration } from './definitions';
 import { PaymentElementOptions } from './definitions';
 import { CvcWidgetOptions } from './definitions';
 
@@ -28,7 +28,9 @@ export interface HyperswitchPlugin {
   updateIntent(options: PaymentSessionConfiguration): Promise<void>;
 
   // Fetch saved methods — returns a handlerId the JS side holds onto
-  getCustomerSavedPaymentMethods(): Promise<{ handlerId: string }>;
+  getCustomerSavedPaymentMethods(options?: {
+    configuration?: SavedPaymentMethodsConfiguration;
+  }): Promise<{ handlerId: string }>;
 
   // Handler-scoped methods — handlerId routes to the right native instance
   getCustomerSavedPaymentMethodData(options: { handlerId: string }): Promise<PaymentMethodListData>;

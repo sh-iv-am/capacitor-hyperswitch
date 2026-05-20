@@ -118,14 +118,20 @@ public class HyperswitchImpl {
             }
             let paymentSessionConfiguration = PaymentSessionConfiguration(sdkAuthorization: sdkAuthorization)
             self?.paymentSession = hyperswitch.initPaymentSession(configuration: paymentSessionConfiguration)
-            self?.paymentSession?.getCustomerSavedPaymentMethods { handler in
-                let handlerId = UUID().uuidString
-                self?.handlerRegistry[handlerId] = handler
-                print(
-                    "[Hyperswitch] Elements ready, PaymentSessionHandler stored with id: \(handlerId)"
-                )
-                onReady(handlerId)
-            }
+            // self?.paymentSession?.getCustomerSavedPaymentMethods { handler in
+            //     let handlerId = UUID().uuidString
+            //     self?.handlerRegistry[handlerId] = handler
+            //     print(
+            //         "[Hyperswitch] Elements ready, PaymentSessionHandler stored with id: \(handlerId)"
+            //     )
+            //     onReady(handlerId)
+            // }
+            
+            let handlerId = UUID().uuidString
+            print(
+                "[Hyperswitch] Elements ready, PaymentSessionHandler stored with id: \(handlerId)"
+            )
+            onReady(handlerId)
 
         }
     }
@@ -345,6 +351,7 @@ public class HyperswitchImpl {
     /// Fetches the PaymentSessionHandler from the active paymentSession,
     /// stores it in the registry, and returns the new handlerId.
     func getCustomerSavedPaymentMethods(
+        configuration: [String: Any]?,
         onReady: @escaping HandlerReadyCallback,
         onError: @escaping ErrorCallback
     ) {
@@ -352,14 +359,24 @@ public class HyperswitchImpl {
             onError("paymentSession not ready — call initPaymentSession() first")
             return
         }
+        
+        var resolvedConfig: SavedPaymentMethodsConfiguration? = nil
+        
+        if let configObj = configuration,
+           let hiddenArr = configObj["hiddenPaymentMethods"] as? [String],
+           !hiddenArr.isEmpty
+        {
+            resolvedConfig = SavedPaymentMethodsConfiguration(hiddenPaymentMethods: hiddenArr)
+        }
+        
         DispatchQueue.main.async {
-            session.getCustomerSavedPaymentMethods { [weak self] handler in
+            session.getCustomerSavedPaymentMethods({ [weak self] handler in
                 guard let self = self else { return }
                 let handlerId = UUID().uuidString
                 self.handlerRegistry[handlerId] = handler
                 print("[Hyperswitch] getCustomerSavedPaymentMethods ready, id: \(handlerId)")
                 onReady(handlerId)
-            }
+            }, configuration: resolvedConfig)
         }
     }
 

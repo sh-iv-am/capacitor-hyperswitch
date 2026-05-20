@@ -30,7 +30,7 @@ npx cap sync
 * [`elements(...)`](#elements)
 * [`createElement(...)`](#createelement)
 * [`updateIntent(...)`](#updateintent)
-* [`getCustomerSavedPaymentMethods()`](#getcustomersavedpaymentmethods)
+* [`getCustomerSavedPaymentMethods(...)`](#getcustomersavedpaymentmethods)
 * [`getCustomerSavedPaymentMethodData(...)`](#getcustomersavedpaymentmethoddata)
 * [`getCustomerDefaultSavedPaymentMethodData(...)`](#getcustomerdefaultsavedpaymentmethoddata)
 * [`getCustomerLastUsedPaymentMethodData(...)`](#getcustomerlastusedpaymentmethoddata)
@@ -115,11 +115,15 @@ updateIntent(options: PaymentSessionConfiguration) => Promise<void>
 --------------------
 
 
-### getCustomerSavedPaymentMethods()
+### getCustomerSavedPaymentMethods(...)
 
 ```typescript
-getCustomerSavedPaymentMethods() => Promise<{ handlerId: string; }>
+getCustomerSavedPaymentMethods(options?: { configuration?: SavedPaymentMethodsConfiguration | undefined; } | undefined) => Promise<{ handlerId: string; }>
 ```
+
+| Param         | Type                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **`options`** | <code>{ configuration?: <a href="#savedpaymentmethodsconfiguration">SavedPaymentMethodsConfiguration</a>; }</code> |
 
 **Returns:** <code>Promise&lt;{ handlerId: string; }&gt;</code>
 
@@ -452,12 +456,14 @@ addListener(event: 'onPaymentConfirmButtonClickEvent', handler: (data: PaymentEv
 | **`appearance`**       | <code><a href="#cvcappearance">CvcAppearance</a></code> |
 | **`placeholder`**      | <code>string</code>                                     |
 | **`sdkAuthorization`** | <code>string</code>                                     |
+| **`cvcIcon`**          | <code>'shown' \| 'hidden'</code>                        |
 
 
 #### CvcAppearance
 
 | Prop         | Type                                                                                       |
 | ------------ | ------------------------------------------------------------------------------------------ |
+| **`theme`**  | <code><a href="#theme">Theme</a></code>                                                    |
 | **`colors`** | <code><a href="#colortype">ColorType</a></code>                                            |
 | **`shapes`** | <code><a href="#shapes">Shapes</a></code>                                                  |
 | **`font`**   | <code><a href="#pick">Pick</a>&lt;<a href="#font">Font</a>, 'family' \| 'scale'&gt;</code> |
@@ -537,6 +543,13 @@ addListener(event: 'onPaymentConfirmButtonClickEvent', handler: (data: PaymentEv
 | **`linkTextSizeAdjust`**        | <code>number</code> |
 | **`modalTextSizeAdjust`**       | <code>number</code> |
 | **`cardTextSizeAdjust`**        | <code>number</code> |
+
+
+#### SavedPaymentMethodsConfiguration
+
+| Prop                       | Type                  |
+| -------------------------- | --------------------- |
+| **`hiddenPaymentMethods`** | <code>string[]</code> |
 
 
 #### PaymentMethodListData
@@ -1359,6 +1372,7 @@ Creates a new function.
 | ------------ | ------------------------------------------------------------------------- |
 | **`shapes`** | <code><a href="#shapes">Shapes</a></code>                                 |
 | **`colors`** | <code><a href="#primarybuttoncolortype">PrimaryButtonColorType</a></code> |
+| **`height`** | <code>number</code>                                                       |
 
 
 #### PrimaryButtonColorType
@@ -1495,13 +1509,14 @@ Creates a new function.
 
 #### SavedMethodCustomization
 
-| Prop                   | Type                                                          |
-| ---------------------- | ------------------------------------------------------------- |
-| **`defaultCollapsed`** | <code>boolean</code>                                          |
-| **`hideCardExpiry`**   | <code>boolean</code>                                          |
-| **`hideCVCError`**     | <code>boolean</code>                                          |
-| **`cvcIcon`**          | <code><a href="#cvcicondisplay">CvcIconDisplay</a></code>     |
-| **`groupingBehavior`** | <code><a href="#groupingbehavior">GroupingBehavior</a></code> |
+| Prop                       | Type                                                          |
+| -------------------------- | ------------------------------------------------------------- |
+| **`defaultCollapsed`**     | <code>boolean</code>                                          |
+| **`hideCardExpiry`**       | <code>boolean</code>                                          |
+| **`hideCVCError`**         | <code>boolean</code>                                          |
+| **`cvcIcon`**              | <code><a href="#cvcicondisplay">CvcIconDisplay</a></code>     |
+| **`groupingBehavior`**     | <code><a href="#groupingbehavior">GroupingBehavior</a></code> |
+| **`hiddenPaymentMethods`** | <code>string[]</code>                                         |
 
 
 #### GroupingBehavior
@@ -1596,6 +1611,11 @@ Creates a new function.
 <code>'sandbox' | 'production'</code>
 
 
+#### Theme
+
+<code>'Default' | 'Light' | 'Dark' | 'Minimal' | 'FlatMinimal' | 'Brutal' | 'Glass' | 'Skeu' | 'Clay' | 'Charcoal' | 'Soft'</code>
+
+
 #### Pick
 
 From T, pick a set of properties whose keys are in the union K
@@ -1685,11 +1705,6 @@ Construct a type with a set of properties K of type T
 <code><a href="#functiondeclaration">FunctionDeclaration</a> | <a href="#variabledeclaration">VariableDeclaration</a> | <a href="#classdeclaration">ClassDeclaration</a></code>
 
 
-#### Theme
-
-<code>'Default' | 'Light' | 'Dark' | 'Minimal' | 'FlatMinimal' | 'Brutal' | 'Glass' | 'Skeu' | 'Clay' | 'Charcoal' | 'Soft'</code>
-
-
 #### SubscriptionEvent
 
 <code>'PAYMENT_METHOD_INFO_CARD' | 'PAYMENT_METHOD_STATUS' | 'FORM_STATUS' | 'PAYMENT_METHOD_INFO_BILLING_ADDRESS'</code>
@@ -1697,7 +1712,7 @@ Construct a type with a set of properties K of type T
 
 #### locale
 
-<code>"en" | "he" | "fr" | "en-GB" | "ar" | "ja" | "de" | "fr-BE" | "es" | "ca" | "pt" | "it" | "pl" | "nl" | "nI-BE" | "sv" | "ru" | "lt" | "cs" | "sk" | "ls" | "cy" | "el" | "et" | "fi" | "nb" | "bs" | "da" | "ms" | "tr-CY"</code>
+<code>'en' | 'he' | 'fr' | 'en-GB' | 'ar' | 'ja' | 'de' | 'fr-BE' | 'es' | 'ca' | 'pt' | 'it' | 'pl' | 'nl' | 'nI-BE' | 'sv' | 'ru' | 'lt' | 'cs' | 'sk' | 'ls' | 'cy' | 'el' | 'et' | 'fi' | 'nb' | 'bs' | 'da' | 'ms' | 'tr-CY'</code>
 
 
 #### RedirectionInfo

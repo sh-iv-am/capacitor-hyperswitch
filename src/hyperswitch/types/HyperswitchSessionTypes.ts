@@ -16,8 +16,8 @@ export interface HyperswitchConfiguration {
   profileId?: string;
   environment?: HyperswitchEnvironment;
   customEndpoints?: {
-    commonEndpoint: string,
-    overrideEndpoints: OverrideEndpontConfiguration
+    commonEndpoint: string;
+    overrideEndpoints: OverrideEndpontConfiguration;
   };
 }
 

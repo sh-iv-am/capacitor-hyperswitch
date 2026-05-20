@@ -4,6 +4,7 @@ import type {
   PaymentResult,
   PaymentSheetOptions,
   CustomerSavedPaymentMethodsSession,
+  SavedPaymentMethodsConfiguration,
 } from './definitions';
 import { createPaymentSessionHandler } from './PaymentSession';
 
@@ -12,8 +13,10 @@ export function createInitPaymentSession(plugin: HyperswitchPlugin): PaymentSess
     async presentPaymentSheet(options?: PaymentSheetOptions): Promise<PaymentResult> {
       return plugin.presentPaymentSheet({ sheetOptions: options ?? {} });
     },
-    async getCustomerSavedPaymentMethods(): Promise<CustomerSavedPaymentMethodsSession> {
-      const { handlerId } = await plugin.getCustomerSavedPaymentMethods();
+    async getCustomerSavedPaymentMethods(
+      options?: SavedPaymentMethodsConfiguration,
+    ): Promise<CustomerSavedPaymentMethodsSession> {
+      const { handlerId } = await plugin.getCustomerSavedPaymentMethods({ configuration: options });
       return createPaymentSessionHandler(plugin, handlerId);
     },
     async updateIntent(intentResolver) {

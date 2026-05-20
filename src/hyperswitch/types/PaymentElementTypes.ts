@@ -1,6 +1,5 @@
 import { PaymentEventData, PaymentRequestData, PaymentResult } from './PaymentTypes';
 
-
 export type removeListenerFunction = Promise<{ remove: () => void }> | { remove: () => void };
 export interface PaymentElement {
   on(event: string, handler?: (data?: PaymentEventData) => void): removeListenerFunction;

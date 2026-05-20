@@ -1,5 +1,7 @@
 package io.hyperswitch.capacitor;
 
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import com.getcapacitor.JSObject;
@@ -23,6 +25,7 @@ import io.hyperswitch.model.HyperswitchConfiguration;
 import io.hyperswitch.model.HyperswitchEnvironment;
 import io.hyperswitch.model.PaymentSessionConfiguration;
 import io.hyperswitch.paymentsession.PaymentSessionHandler;
+import io.hyperswitch.paymentsession.SavedPaymentMethodsConfiguration;
 import io.hyperswitch.paymentsheet.PaymentResult;
 import io.hyperswitch.sdk.Elements;
 import io.hyperswitch.sdk.Hyperswitch;
@@ -242,6 +245,27 @@ public class HyperswitchImpl {
         });
     }
 
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> sanitizeHiddenPaymentMethods(Map<String, Object> configMap) {
+        Map<String, Object> paymentMethodLayout = (Map<String, Object>) configMap.get("paymentMethodLayout");
+        if (paymentMethodLayout != null) {
+            Map<String, Object> savedMethodCustomization = (Map<String, Object>) paymentMethodLayout.get("savedMethodCustomization");
+            if (savedMethodCustomization != null) {
+                List<Object> hiddenPaymentMethods = (List<Object>) savedMethodCustomization.get("hiddenPaymentMethods");
+                if (hiddenPaymentMethods != null) {
+                    Log.d("DEBUG", "type: " + hiddenPaymentMethods.getClass().getName() + " value: " + hiddenPaymentMethods);
+                    ArrayList<String> list = new ArrayList<>();
+                    for (Object item : hiddenPaymentMethods) {
+                        if (item != null) list.add(item.toString());
+                    }
+
+                    savedMethodCustomization.put("hiddenPaymentMethods", list);
+                }
+            }
+        }
+        return configMap;
+    }
+
     /**
      * Binds a native view to the Elements session.
      * Mirrors:
@@ -267,7 +291,7 @@ public class HyperswitchImpl {
                 List<String> subscribedEventsList = extractAndRemoveSubscribedEvents(configMap);
                 paymentElementBound = elements.bind(
                         paymentElementView,
-                        configMap,
+                        sanitizeHiddenPaymentMethods(configMap),
                         builder -> {
                             if (subscribedEventsList.contains("FORM_STATUS")) {
                                 builder.on(PaymentEvents.FormStatus.INSTANCE, event -> {
@@ -548,7 +572,9 @@ public class HyperswitchImpl {
      * Flow 1 (InitPaymentSession): asynchronously fetches the PaymentSessionHandler
      * from the active paymentSession, stores it in the registry, and returns its ID.
      */
-    public void getCustomerSavedPaymentMethods(CustomerSavedPaymentMethodsCallback callback) {
+    public void getCustomerSavedPaymentMethods(
+            SavedPaymentMethodsConfiguration config,
+            CustomerSavedPaymentMethodsCallback callback) {
         Logger.info("Hyperswitch", "getCustomerSavedPaymentMethods called");
 
         if (paymentSession == null) {
@@ -556,7 +582,7 @@ public class HyperswitchImpl {
             return;
         }
 
-        paymentSession.getCustomerSavedPaymentMethods(handler -> {
+        paymentSession.getCustomerSavedPaymentMethods(config, handler -> {
             String handlerId = UUID.randomUUID().toString();
             handlerRegistry.put(handlerId, handler);
             Logger.info("Hyperswitch", "getCustomerSavedPaymentMethods ready, id: " + handlerId);
