@@ -423,12 +423,26 @@ addListener(event: 'onPaymentConfirmButtonClickEvent', handler: (data: PaymentEv
 
 #### HyperswitchConfiguration
 
-| Prop                  | Type                                                                                                                                  |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| **`publishableKey`**  | <code>string</code>                                                                                                                   |
-| **`profileId`**       | <code>string</code>                                                                                                                   |
-| **`environment`**     | <code><a href="#hyperswitchenvironment">HyperswitchEnvironment</a></code>                                                             |
-| **`customEndpoints`** | <code>{ commonEndpoint: string; overrideEndpoints: <a href="#overrideendpontconfiguration">OverrideEndpontConfiguration</a>; }</code> |
+| Prop                  | Type                                                                                                            |
+| --------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **`publishableKey`**  | <code>string</code>                                                                                             |
+| **`profileId`**       | <code>string</code>                                                                                             |
+| **`environment`**     | <code><a href="#hyperswitchenvironment">HyperswitchEnvironment</a></code>                                       |
+| **`customEndpoints`** | <code><a href="#commonendpoint">CommonEndpoint</a> \| <a href="#overrideendpoints">OverrideEndpoints</a></code> |
+
+
+#### CommonEndpoint
+
+| Prop                 | Type                |
+| -------------------- | ------------------- |
+| **`commonEndpoint`** | <code>string</code> |
+
+
+#### OverrideEndpoints
+
+| Prop                    | Type                                                                                  |
+| ----------------------- | ------------------------------------------------------------------------------------- |
+| **`overrideEndpoints`** | <code><a href="#overrideendpontconfiguration">OverrideEndpontConfiguration</a></code> |
 
 
 #### OverrideEndpontConfiguration

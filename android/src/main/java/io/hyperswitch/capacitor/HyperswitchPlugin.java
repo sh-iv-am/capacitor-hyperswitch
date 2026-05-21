@@ -49,8 +49,8 @@ public class HyperswitchPlugin extends Plugin {
         }
 
         String profileId = call.getString("profileId");
-        JSObject customConfig = call.getObject("customConfig");
-        String environment = call.getString("environment", "PROD");
+        JSObject customConfig = call.getObject("customEndpoints");
+        String environment = call.getString("environment", "production");
 
         implementation.init(getActivity(), publishableKey, profileId, customConfig, environment);
         call.resolve();

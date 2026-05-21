@@ -72,19 +72,17 @@ public class HyperswitchImpl {
         var customEndpointConfiguration: CustomEndpointConfiguration?
         var environmentConfig: HyperswitchEnvironment?
 
-        if let customEndpointConfig = customConfig?["CustomEndpointConfiguration"] as? [String: Any],
-            let config = customEndpointConfig["customEndpointConfig"] as? String
-        {
-            customEndpointConfiguration = CustomEndpointConfiguration.commonEndpoint(config)
+        if let commonEndpoint = customConfig?["commonEndpoint"] as? String {
+            customEndpointConfiguration = CustomEndpointConfiguration.commonEndpoint(commonEndpoint)
         }
 
-        if let overrideEndpontConfiguration = customConfig?["OverrideEndpontConfiguration"] as? [String: Any] {
+        if let overrideEndpoints = customConfig?["overrideEndpoints"] as? [String: Any] {
             let config = OverrideEndpointConfiguration(
-                customBackendEndpoint: overrideEndpontConfiguration["customBackendEndpoint"] as? String,
-                customAssetEndpoint: overrideEndpontConfiguration["customAssetEndpoint"] as? String,
-                customSDKConfigEndpoint: overrideEndpontConfiguration["customSDKConfigEndpoint"] as? String,
-                customAirborneEndpoint: overrideEndpontConfiguration["customAirborneEndpoint"] as? String,
-                customLoggingEndpoint: overrideEndpontConfiguration["customLoggingEndpoint"] as? String
+                customBackendEndpoint: overrideEndpoints["customBackendEndpoint"] as? String,
+                customAssetEndpoint: overrideEndpoints["customAssetEndpoint"] as? String,
+                customSDKConfigEndpoint: overrideEndpoints["customSDKConfigEndpoint"] as? String,
+                customAirborneEndpoint: overrideEndpoints["customAirborneEndpoint"] as? String,
+                customLoggingEndpoint: overrideEndpoints["customLoggingEndpoint"] as? String
             )
             customEndpointConfiguration = CustomEndpointConfiguration.overrideEndpoints(config)
         }

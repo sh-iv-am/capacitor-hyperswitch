@@ -126,24 +126,27 @@ public class HyperswitchImpl {
         CustomEndpointConfiguration customEndpointConfig = null;
         if (customConfig != null) {
             JSObject overrideObj = customConfig.getJSObject("overrideEndpoints");
-            OverrideEndpoints overrideEndpoints = overrideObj != null ? new OverrideEndpoints(
-                    overrideObj.getString("customBackendEndpoint"),
-                    overrideObj.getString("customLoggingEndpoint"),
-                    overrideObj.getString("customAssetEndpoint"),
-                    overrideObj.getString("customSDKConfigEndpoint"),
-                    overrideObj.getString("customConfirmEndpoint"),
-                    overrideObj.getString("customAirborneEndpoint")
-            ) : null;
-            customEndpointConfig = new CustomEndpointConfiguration(
-                    overrideEndpoints,
-                    customConfig.getString("commonEndpoint")
-            );
+            String commonEndpoint = customConfig.getString("commonEndpoint");
+            if (overrideObj != null) {
+                OverrideEndpoints overrideEndpoints = new OverrideEndpoints(
+                        overrideObj.getString("customBackendEndpoint"),
+                        overrideObj.getString("customLoggingEndpoint"),
+                        overrideObj.getString("customAssetEndpoint"),
+                        overrideObj.getString("customSDKConfigEndpoint"),
+                        overrideObj.getString("customConfirmEndpoint"),
+                        overrideObj.getString("customAirborneEndpoint")
+                );
+                customEndpointConfig = new CustomEndpointConfiguration(overrideEndpoints, null);
+            } else if (commonEndpoint != null) {
+                customEndpointConfig = new CustomEndpointConfiguration(null, commonEndpoint);
+            }
         }
 
         HyperswitchEnvironment env = HyperswitchEnvironment.PROD;
-        if ("SANDBOX".equals(environment)) {
+        String envUpper = environment != null ? environment.toUpperCase() : "PRODUCTION";
+        if ("SANDBOX".equals(envUpper)) {
             env = HyperswitchEnvironment.SANDBOX;
-        } else if ("INTEG".equals(environment)) {
+        } else if ("INTEG".equals(envUpper)) {
             env = HyperswitchEnvironment.INTEG;
         }
 

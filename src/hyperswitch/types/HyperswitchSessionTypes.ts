@@ -9,16 +9,21 @@ export interface OverrideEndpontConfiguration {
   customAirborneEndpoint?: string;
 }
 
+export interface CommonEndpoint {
+  commonEndpoint: string;
+}
+
+export interface OverrideEndpoints {
+  overrideEndpoints: OverrideEndpontConfiguration;
+}
+
 export type HyperswitchEnvironment = 'sandbox' | 'production';
 
 export interface HyperswitchConfiguration {
   publishableKey: string;
   profileId?: string;
   environment?: HyperswitchEnvironment;
-  customEndpoints?: {
-    commonEndpoint: string;
-    overrideEndpoints: OverrideEndpontConfiguration;
-  };
+  customEndpoints?: CommonEndpoint | OverrideEndpoints;
 }
 
 export interface PaymentSessionConfiguration {

@@ -83,8 +83,8 @@ public class HyperswitchPlugin: CAPPlugin, CAPBridgedPlugin {
         }
 
         let profileId = call.getString("profileId")
-        let customConfig = call.getObject("customConfig")
-        let environment = call.getString("environment") ?? "PROD"
+        let customConfig = call.getObject("customEndpoints")
+        let environment = call.getString("environment") ?? "production"
 
         impl.initialize(
             viewController: viewController,
