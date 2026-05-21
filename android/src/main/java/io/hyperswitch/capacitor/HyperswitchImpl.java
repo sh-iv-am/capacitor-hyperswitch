@@ -389,6 +389,11 @@ public class HyperswitchImpl {
     public void updateIntent(String sdkAuthorization, PaymentResultCallback callback) {
         Logger.info("Hyperswitch", "updateIntent called");
 
+        sdkAuth = sdkAuthorization;
+        if (paymentSession != null) {
+            paymentSession.updateSdkAuthorization(sdkAuthorization);
+        }
+
         if (elements == null) {
             if (callback != null) callback.onError("elements() must be called first");
             return;
@@ -396,7 +401,6 @@ public class HyperswitchImpl {
 
         PaymentSessionConfiguration newConfig = new PaymentSessionConfiguration(sdkAuthorization);
 
-        sdkAuth = sdkAuthorization;
         for (Map.Entry<String, PaymentSessionHandler> entry : handlerRegistry.entrySet()) {
             PaymentSessionHandler handler = entry.getValue();
 
