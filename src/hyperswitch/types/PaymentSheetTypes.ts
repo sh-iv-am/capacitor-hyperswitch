@@ -99,6 +99,7 @@ export interface ApplePayConfiguration {
 
 export type PayPalButtonType = 'paypal' | 'checkout' | 'buynow' | 'pay';
 export type PayPalButtonStyle = 'gold' | 'blue' | 'white' | 'black' | 'silver';
+export type PayPalButtonSize = 'small' | 'medium' | 'large';
 
 export interface PayPalThemeBaseStyle {
   light?: PayPalButtonStyle;
@@ -109,6 +110,7 @@ export interface PayPalConfiguration {
   visibility?: 'hidden' | 'shown';
   buttonType?: PayPalButtonType;
   buttonStyle?: PayPalThemeBaseStyle;
+  buttonSize?: PayPalButtonSize;
 }
 
 export interface WalletButtonsConfiguration {
