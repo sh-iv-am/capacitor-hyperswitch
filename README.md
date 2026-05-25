@@ -30,6 +30,7 @@ npx cap sync
 * [`elements(...)`](#elements)
 * [`createElement(...)`](#createelement)
 * [`updateIntent(...)`](#updateintent)
+* [`setPaymentConfirmButtonCallback()`](#setpaymentconfirmbuttoncallback)
 * [`getCustomerSavedPaymentMethods(...)`](#getcustomersavedpaymentmethods)
 * [`getCustomerSavedPaymentMethodData(...)`](#getcustomersavedpaymentmethoddata)
 * [`getCustomerDefaultSavedPaymentMethodData(...)`](#getcustomerdefaultsavedpaymentmethoddata)
@@ -111,6 +112,15 @@ updateIntent(options: PaymentSessionConfiguration) => Promise<void>
 | Param         | Type                                                                                |
 | ------------- | ----------------------------------------------------------------------------------- |
 | **`options`** | <code><a href="#paymentsessionconfiguration">PaymentSessionConfiguration</a></code> |
+
+--------------------
+
+
+### setPaymentConfirmButtonCallback()
+
+```typescript
+setPaymentConfirmButtonCallback() => Promise<void>
+```
 
 --------------------
 

@@ -27,6 +27,14 @@ public class HyperswitchPlugin: CAPPlugin, CAPBridgedPlugin {
             returnType: CAPPluginReturnPromise
         ),
         CAPPluginMethod(
+            name: "setPaymentConfirmButtonCallback",
+            returnType: CAPPluginReturnPromise
+        ),
+        CAPPluginMethod(
+            name: "resolvePaymentConfirmButtonClick",
+            returnType: CAPPluginReturnPromise
+        ),
+        CAPPluginMethod(
             name: "confirmWithCustomerLastUsedPaymentMethod",
             returnType: CAPPluginReturnPromise
         ),
@@ -224,6 +232,11 @@ public class HyperswitchPlugin: CAPPlugin, CAPBridgedPlugin {
             onResult: { result in call.resolve(result) },
             onError: { msg in call.reject(msg) }
         )
+    }
+
+    @objc func setPaymentConfirmButtonCallback(_ call: CAPPluginCall) {
+        impl.setPaymentConfirmButtonCallback()
+        call.resolve()
     }
 
     @objc func resolvePaymentConfirmButtonClick(_ call: CAPPluginCall) {

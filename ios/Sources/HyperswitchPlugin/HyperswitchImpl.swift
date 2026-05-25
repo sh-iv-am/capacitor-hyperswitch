@@ -58,6 +58,7 @@ public class HyperswitchImpl {
     }
 
     private var paymentWidget: PaymentWidget? { paymentElementContainer?.widget }
+    private var pendingCallbackRegistration: Bool = false
     private var cvcWidget: CVCWidget? { cvcWidgetContainer?.widget }
     private var onPaymentConfirmCallback: ((Bool) -> Void)? = nil
     // ── Init ───────────────────────────────────────────────────────────────────
@@ -156,7 +157,7 @@ public class HyperswitchImpl {
                     print("[Hyperswitch] PaymentElement container not registered — call create() first")
                     return
                 }
-                let paymentElementref = container.attach(
+                container.attach(
                     paymentSession: paymentSession,
                     configuration: configMap,
                     completion: { [weak self] completion in
@@ -172,23 +173,8 @@ public class HyperswitchImpl {
                         self?.bindPaymentElementEvents(builder: builder, subscribed: subscribedEvents, source: "paymentElement")
                     }
                 )
-                paymentElementref.shouldProceedWithPayment { data, callback in
-                    self.onPaymentConfirmCallback = callback
-                    do {
-                        let data = try JSONEncoder().encode(data)
-                        let dictionary =
-                            try JSONSerialization.jsonObject(
-                                with: data
-                            ) as? [String: Any]
-                        self.fireEvent(
-                            type: "onPaymentConfirmButtonClickEvent",
-                            payload: dictionary,
-                            source: "onPaymentConfirmButtonClickEvent"
-                        )
-
-                    } catch {
-                        print(error)
-                    }
+                if(self.pendingCallbackRegistration){
+                    self.setPaymentConfirmButtonCallback()
                 }
                 print("[Hyperswitch] PaymentElement created and placed successfully")
 
@@ -210,6 +196,35 @@ public class HyperswitchImpl {
             }
         }
     }
+
+    func setPaymentConfirmButtonCallback(){
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            guard let paymentWidget = self.paymentWidget else {
+                self.pendingCallbackRegistration = true
+                return
+            }
+
+            paymentWidget.shouldProceedWithPayment { data, callback in
+                self.onPaymentConfirmCallback = callback
+                do {
+                    let data = try JSONEncoder().encode(data)
+                    let dictionary =
+                    try JSONSerialization.jsonObject(
+                        with: data
+                    ) as? [String: Any]
+                    self.fireEvent(
+                        type: "onPaymentConfirmButtonClickEvent",
+                        payload: dictionary,
+                        source: "onPaymentConfirmButtonClickEvent"
+                    )
+                } catch {
+                    print(error)
+                }
+            }
+        }
+    }
+    
     func resolvePaymentConfirmButtonClick(proceed: Bool) {
         let cb = self.onPaymentConfirmCallback
         if cb != nil {
