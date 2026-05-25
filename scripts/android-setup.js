@@ -62,7 +62,7 @@ patch('android/build.gradle', path.join(androidDir, 'build.gradle'), (content) =
   if (content.includes('io.hyperswitch:hyperswitch-gradle-plugin')) {
     return content.replace(
       /classpath\s+["']io\.hyperswitch:hyperswitch-gradle-plugin:[^"']+["']/,
-      `classpath "io.hyperswitch:hyperswitch-gradle-plugin:0.3.5"`,
+      `classpath "io.hyperswitch:hyperswitch-gradle-plugin:0.3.6"`,
     );
   }
 

@@ -124,7 +124,7 @@ public class HyperswitchImpl {
             //     )
             //     onReady(handlerId)
             // }
-            
+
             let handlerId = UUID().uuidString
             print(
                 "[Hyperswitch] Elements ready, PaymentSessionHandler stored with id: \(handlerId)"
@@ -357,16 +357,15 @@ public class HyperswitchImpl {
             onError("paymentSession not ready — call initPaymentSession() first")
             return
         }
-        
-        var resolvedConfig: SavedPaymentMethodsConfiguration? = nil
-        
+
+        var resolvedConfig: SavedPaymentMethodsConfiguration?
+
         if let configObj = configuration,
            let hiddenArr = configObj["hiddenPaymentMethods"] as? [String],
-           !hiddenArr.isEmpty
-        {
+           !hiddenArr.isEmpty {
             resolvedConfig = SavedPaymentMethodsConfiguration(hiddenPaymentMethods: hiddenArr)
         }
-        
+
         DispatchQueue.main.async {
             session.getCustomerSavedPaymentMethods({ [weak self] handler in
                 guard let self = self else { return }
@@ -407,15 +406,13 @@ public class HyperswitchImpl {
         switch result {
         case .success(let paymentMethod):
             if let jsonData = try? JSONEncoder().encode(paymentMethod),
-                let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
-            {
+                let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
                 return ["data": dict]
             }
             return ["error": ["code": "ERROR", "message": "Failed to serialize PaymentMethod"]]
         case .failure(let pmError):
             if let jsonData = try? JSONEncoder().encode(pmError),
-                let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
-            {
+                let dict = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] {
                 return ["error": dict]
             }
             return ["error": ["code": pmError.code, "message": pmError.message]]
@@ -467,16 +464,14 @@ public class HyperswitchImpl {
         guard let data = data else { return [:] }
         if let dict = data as? [String: Any] {
             if let jsonData = try? JSONSerialization.data(withJSONObject: dict),
-                let jsonString = String(data: jsonData, encoding: .utf8)
-            {
+                let jsonString = String(data: jsonData, encoding: .utf8) {
                 return ["data": jsonString]
             }
             return ["data": dict]
         }
         if let arr = data as? [Any] {
             if let jsonData = try? JSONSerialization.data(withJSONObject: arr),
-                let jsonString = String(data: jsonData, encoding: .utf8)
-            {
+                let jsonString = String(data: jsonData, encoding: .utf8) {
                 return ["data": jsonString]
             }
         }

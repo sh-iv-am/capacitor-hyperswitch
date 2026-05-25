@@ -25,6 +25,7 @@ export type CvcIconDisplay = 'shown' | 'hidden';
 
 export interface GroupingBehavior {
   displayInSeparateScreen?: boolean;
+  displayInSeparateSection?: boolean;
   groupByPaymentMethods?: boolean;
 }
 
@@ -41,6 +42,8 @@ export interface SavedMethodCustomization {
   hiddenPaymentMethods?: string[];
 }
 
+export type CardBrandIconDisplay = 'hidden' | 'animated' | 'standard' | 'hideGeneric';
+
 export interface PaymentMethodLayout {
   type?: LayoutType;
   showOneClickWalletsOnTop?: boolean;
@@ -49,6 +52,9 @@ export interface PaymentMethodLayout {
   radios?: boolean;
   spacedAccordionItems?: boolean;
   maxAccordionItems?: number;
+  cvcIcon?: CvcIconDisplay;
+  cardBrandIcon?: CardBrandIconDisplay;
+  showCheckedIconForSelection?: boolean;
   savedMethodCustomization?: SavedMethodCustomization;
 }
 
@@ -267,4 +273,5 @@ export interface PaymentSheetOptions {
   preloadCardElement?: boolean;
   alwaysSendCustomerAcceptance?: boolean;
   opensCardScannerAutomatically?: boolean;
+  splitCardFields?: boolean;
 }

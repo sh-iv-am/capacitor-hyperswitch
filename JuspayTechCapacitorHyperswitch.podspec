@@ -13,8 +13,8 @@ Pod::Spec.new do |s|
   s.source_files = 'ios/Sources/**/*.{swift,h,m,c,cc,mm,cpp}'
   s.ios.deployment_target = '15.1'
   s.dependency 'Capacitor'
-  s.dependency 'hyperswitch-sdk-ios/sentry', '= 0.5.1'
-  s.dependency 'hyperswitch-sdk-ios/paypal', '= 0.5.1'
-  s.dependency 'hyperswitch-sdk-ios/airborne', '= 0.5.1'
+  s.dependency 'hyperswitch-sdk-ios/sentry', '= 0.5.2'
+  s.dependency 'hyperswitch-sdk-ios/paypal', '= 0.5.2'
+  s.dependency 'hyperswitch-sdk-ios/airborne', '= 0.5.2'
   s.swift_version = '5.1'
 end

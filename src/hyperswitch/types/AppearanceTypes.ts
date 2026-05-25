@@ -12,6 +12,7 @@ export interface Colors {
   error?: string;
   loaderBackground?: string;
   loaderForeground?: string;
+  overlay?: string;
   selectedComponentBackground?: string;
   selectedComponentBorder?: string;
   selectedComponentBorderWidth?: number;
@@ -41,6 +42,8 @@ export interface Shapes {
   borderRadius?: number;
   borderWidth?: number;
   shadow?: ShadowConfig;
+  inputHeight?: number;
+  gap?: number;
 }
 
 export interface Font {

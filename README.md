@@ -508,6 +508,7 @@ addListener(event: 'onPaymentConfirmButtonClickEvent', handler: (data: PaymentEv
 | **`error`**                        | <code>string</code> |
 | **`loaderBackground`**             | <code>string</code> |
 | **`loaderForeground`**             | <code>string</code> |
+| **`overlay`**                      | <code>string</code> |
 | **`selectedComponentBackground`**  | <code>string</code> |
 | **`selectedComponentBorder`**      | <code>string</code> |
 | **`selectedComponentBorderWidth`** | <code>number</code> |
@@ -522,6 +523,8 @@ addListener(event: 'onPaymentConfirmButtonClickEvent', handler: (data: PaymentEv
 | **`borderRadius`** | <code>number</code>                                   |
 | **`borderWidth`**  | <code>number</code>                                   |
 | **`shadow`**       | <code><a href="#shadowconfig">ShadowConfig</a></code> |
+| **`inputHeight`**  | <code>number</code>                                   |
+| **`gap`**          | <code>number</code>                                   |
 
 
 #### ShadowConfig
@@ -1366,6 +1369,7 @@ Creates a new function.
 | **`preloadCardElement`**                           | <code>boolean</code>                                                              |
 | **`alwaysSendCustomerAcceptance`**                 | <code>boolean</code>                                                              |
 | **`opensCardScannerAutomatically`**                | <code>boolean</code>                                                              |
+| **`splitCardFields`**                              | <code>boolean</code>                                                              |
 
 
 #### Appearance
@@ -1518,6 +1522,9 @@ Creates a new function.
 | **`radios`**                           | <code>boolean</code>                                                            |
 | **`spacedAccordionItems`**             | <code>boolean</code>                                                            |
 | **`maxAccordionItems`**                | <code>number</code>                                                             |
+| **`cvcIcon`**                          | <code><a href="#cvcicondisplay">CvcIconDisplay</a></code>                       |
+| **`cardBrandIcon`**                    | <code><a href="#cardbrandicondisplay">CardBrandIconDisplay</a></code>           |
+| **`showCheckedIconForSelection`**      | <code>boolean</code>                                                            |
 | **`savedMethodCustomization`**         | <code><a href="#savedmethodcustomization">SavedMethodCustomization</a></code>   |
 
 
@@ -1535,10 +1542,11 @@ Creates a new function.
 
 #### GroupingBehavior
 
-| Prop                          | Type                 |
-| ----------------------------- | -------------------- |
-| **`displayInSeparateScreen`** | <code>boolean</code> |
-| **`groupByPaymentMethods`**   | <code>boolean</code> |
+| Prop                           | Type                 |
+| ------------------------------ | -------------------- |
+| **`displayInSeparateScreen`**  | <code>boolean</code> |
+| **`displayInSeparateSection`** | <code>boolean</code> |
+| **`groupByPaymentMethods`**    | <code>boolean</code> |
 
 
 #### WalletButtonsConfiguration
@@ -1747,6 +1755,11 @@ Construct a type with a set of properties K of type T
 #### CvcIconDisplay
 
 <code>'shown' | 'hidden'</code>
+
+
+#### CardBrandIconDisplay
+
+<code>'hidden' | 'animated' | 'standard' | 'hideGeneric'</code>
 
 
 #### GooglePayButtonType

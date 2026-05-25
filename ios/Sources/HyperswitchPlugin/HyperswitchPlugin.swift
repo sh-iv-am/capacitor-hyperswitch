@@ -39,7 +39,7 @@ public class HyperswitchPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "elementUnmount", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "elementMount", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "elementFocus", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "elementClear", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "elementClear", returnType: CAPPluginReturnPromise)
     ]
 
     private let impl = HyperswitchImpl.shared
@@ -63,7 +63,7 @@ public class HyperswitchPlugin: CAPPlugin, CAPBridgedPlugin {
                 channel,
                 data: [
                     "type": type,
-                    "payload": payload,
+                    "payload": payload
                 ]
             )
         }

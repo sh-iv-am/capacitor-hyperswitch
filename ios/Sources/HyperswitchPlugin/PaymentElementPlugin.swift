@@ -13,7 +13,7 @@ public class PaymentElementPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "destroy", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "updatePosition", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "show", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "hide", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "hide", returnType: CAPPluginReturnPromise)
     ]
 
     private var container: PaymentElementContainer?
