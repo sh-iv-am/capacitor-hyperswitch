@@ -62,14 +62,14 @@ patch('android/build.gradle', path.join(androidDir, 'build.gradle'), (content) =
   if (content.includes('io.hyperswitch:hyperswitch-gradle-plugin')) {
     return content.replace(
       /classpath\s+["']io\.hyperswitch:hyperswitch-gradle-plugin:[^"']+["']/,
-      `classpath "io.hyperswitch:hyperswitch-gradle-plugin:0.3.8"`,
+      `classpath "io.hyperswitch:hyperswitch-gradle-plugin:0.3.9"`,
     );
   }
 
   // Insert on a new line immediately after the AGP classpath line.
   return content.replace(
     /([ \t]*classpath\s+['"]com\.android\.tools\.build:gradle[^'"]*['"]\s*\n)/,
-    `$1        classpath "io.hyperswitch:hyperswitch-gradle-plugin:0.3.1"\n`,
+    `$1        classpath "io.hyperswitch:hyperswitch-gradle-plugin:0.3.9"\n`,
   );
 });
 
