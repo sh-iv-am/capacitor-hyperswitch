@@ -136,6 +136,7 @@ export function createPaymentElement(plugin: HyperswitchPlugin, options?: Paymen
     },
     onPaymentConfirmButtonClick(handler?: (data: PaymentRequestData) => boolean): removeListenerFunction {
       if (!handler) return { remove: () => {} };
+      plugin.setPaymentConfirmButtonCallback();
       return plugin.addListener('onPaymentConfirmButtonClickEvent', (eventData: PaymentEventData) => {
         try {
           let data = (eventData.payload as PaymentRequestData) || {};

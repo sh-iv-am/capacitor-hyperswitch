@@ -233,6 +233,11 @@ public class HyperswitchPlugin extends Plugin {
             }
         });
     }
+    @PluginMethod
+    public void setPaymentConfirmButtonCallback(PluginCall call) {
+        implementation.setPaymentConfirmButtonCallback();
+        call.resolve();
+    }
 
     @PluginMethod
     public void resolvePaymentConfirmButtonClick(PluginCall call) {

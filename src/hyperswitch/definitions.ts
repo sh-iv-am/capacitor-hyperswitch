@@ -26,6 +26,7 @@ export interface HyperswitchPlugin {
   elements(options: { elementsOptions: PaymentSessionConfiguration }): Promise<{ handlerId: string }>;
   createElement(options: { type: string; createOptions: PaymentElementOptions | CvcWidgetOptions }): Promise<void>;
   updateIntent(options: PaymentSessionConfiguration): Promise<void>;
+  setPaymentConfirmButtonCallback(): Promise<void>;
 
   // Fetch saved methods — returns a handlerId the JS side holds onto
   getCustomerSavedPaymentMethods(options?: {

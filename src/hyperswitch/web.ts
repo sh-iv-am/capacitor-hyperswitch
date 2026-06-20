@@ -107,6 +107,9 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
     console.log('INIT_PAYMENT_SESSION', options);
     defaultProps.sdkAuthorization = options.paymentSessionOptions['sdkAuthorization'] as string;
   }
+  async setPaymentConfirmButtonCallback(): Promise<void> {
+    console.log('SET_PAYMENT_CONFIRM_BUTTON_CALLBACK');
+  }
 
   async getCustomerSavedPaymentMethods(): Promise<{ handlerId: string }> {
     console.log('GET_CUSTOMER_SAVED_PAYMENT_METHODS');
