@@ -7,6 +7,7 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import org.json.JSONArray;
+import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -19,8 +20,9 @@ public class HyperswitchPlugin extends Plugin {
 
     /**
      * Called once after the plugin is registered with Capacitor.
-     * Registers a NativeEventListener so that widget events (FORM_STATUS, CVC_STATUS, etc.)
-     * are forwarded to the JS layer via notifyListeners("paymentEvent", ...).
+     * Registers a NativeEventListener so that widget events are forwarded to the JS layer via
+     * notifyListeners on a source-specific channel as `{ type, payload }`; for payment events
+     * `type` is the event name (e.g. formStatusChange, ready).
      */
     @Override
     public void load() {
@@ -345,7 +347,8 @@ public class HyperswitchPlugin extends Plugin {
 
     @SuppressWarnings("unchecked")
     private static Object toJSValue(Object value) {
-        if (value == null) return null;
+        // JSONObject.put(key, null) removes the key; NULL keeps fields like `bin: null`.
+        if (value == null) return JSONObject.NULL;
         if (value instanceof Map) return toJSObject((Map<String, Object>) value);
         if (value instanceof List) {
             JSArray arr = new JSArray();

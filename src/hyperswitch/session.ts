@@ -1,17 +1,33 @@
 import type {
   HyperswitchPlugin,
   PaymentSession,
+  PaymentEvent,
+  PaymentEventData,
   PaymentResult,
   PaymentSheetOptions,
   CustomerSavedPaymentMethodsSession,
   SavedPaymentMethodsConfiguration,
 } from './definitions';
 import { createPaymentSessionHandler } from './PaymentSession';
+import { toPaymentEvent, withSubscriptionEvents } from './events';
 
 export function createInitPaymentSession(plugin: HyperswitchPlugin): PaymentSession {
   return {
-    async presentPaymentSheet(options?: PaymentSheetOptions): Promise<PaymentResult> {
-      return plugin.presentPaymentSheet({ sheetOptions: options ?? {} });
+    async presentPaymentSheet(
+      options?: PaymentSheetOptions,
+      onChange?: (event: PaymentEvent) => void,
+    ): Promise<PaymentResult> {
+      // Sheet events arrive on the "paymentEvent" channel, listened to only while this sheet is up.
+      const listener = onChange
+        ? await plugin.addListener('paymentEvent', (eventData: PaymentEventData) =>
+            onChange(toPaymentEvent(eventData)),
+          )
+        : null;
+      try {
+        return await plugin.presentPaymentSheet({ sheetOptions: withSubscriptionEvents(options) });
+      } finally {
+        await listener?.remove();
+      }
     },
     async getCustomerSavedPaymentMethods(
       options?: SavedPaymentMethodsConfiguration,

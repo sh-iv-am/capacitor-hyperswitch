@@ -16,8 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import io.hyperswitch.CvcWidgetEvents;
-import io.hyperswitch.PaymentEvents;
+import io.hyperswitch.PaymentEventListener;
 import io.hyperswitch.model.CustomEndpointConfiguration;
 import io.hyperswitch.model.OverrideEndpoints;
 import io.hyperswitch.model.ElementsUpdateResult;
@@ -112,7 +111,7 @@ public class HyperswitchImpl {
         void onError(String message);
     }
 
-    /** Called when a payment widget emits a native event (e.g. CVC_STATUS, FORM_STATUS). */
+    /** Called when a payment widget emits a native event (e.g. cvcStatusChange, formStatusChange). */
     public interface NativeEventListener {
         void onEvent(String type, Map<String, Object> payload, String source);
     }
@@ -272,8 +271,10 @@ public class HyperswitchImpl {
     /**
      * Binds a native view to the Elements session.
      * Mirrors:
-     *   paymentElementBound = elements.bind(paymentElement, buildConfiguration()) { on(...) { } }
-     *   cvcWidgetBound      = elements.bind(cvcWidget, configMap) { on(CvcWidgetEvents.CvcStatus) { } }
+     *   paymentElementBound = elements.bind(paymentElement, configMap); paymentElement.onChange { }
+     *   cvcWidgetBound      = elements.bind(cvcWidget, configMap); cvcWidget.onChange { }
+     * Events are registered on the view; the bound element carries only the session.
+     * `subscriptionEvents` stays in the config map; the SDK turns it into the bundle's subscription.
      */
     public void createElement(String type, JSObject createOptions) {
         Logger.info("Hyperswitch", "createElement called with type: " + type);
@@ -291,38 +292,17 @@ public class HyperswitchImpl {
                 }
                 unbindPaymentElement();
                 Map<String, Object> configMap = jsObjectToMap(createOptions);
-                List<String> subscribedEventsList = extractAndRemoveSubscribedEvents(configMap);
                 paymentElementBound = elements.bind(
                         paymentElementView,
                         sanitizeHiddenPaymentMethods(configMap),
-                        builder -> {
-                            if (subscribedEventsList.contains("FORM_STATUS")) {
-                                builder.on(PaymentEvents.FormStatus.INSTANCE, event -> {
-                                    fireEvent("FORM_STATUS", event.getPayload(), "paymentElement");
-                                    return Unit.INSTANCE;
-                                });
-                            }
-                            if (subscribedEventsList.contains("PAYMENT_METHOD_STATUS")) {
-                                builder.on(PaymentEvents.PaymentMethodStatus.INSTANCE, event -> {
-                                    fireEvent("PAYMENT_METHOD_STATUS", event.getPayload(), "paymentElement");
-                                    return Unit.INSTANCE;
-                                });
-                            }
-                            if (subscribedEventsList.contains("PAYMENT_METHOD_INFO_CARD")) {
-                                builder.on(PaymentEvents.PaymentMethodInfoCard.INSTANCE, event -> {
-                                    fireEvent("PAYMENT_METHOD_INFO_CARD", event.getPayload(), "paymentElement");
-                                    return Unit.INSTANCE;
-                                });
-                            }
-                            if (subscribedEventsList.contains("PAYMENT_METHOD_INFO_BILLING_ADDRESS")) {
-                                builder.on(PaymentEvents.PaymentMethodInfoBillingAddress.INSTANCE, event -> {
-                                    fireEvent("PAYMENT_METHOD_INFO_BILLING_ADDRESS", event.getPayload(), "paymentElement");
-                                    return Unit.INSTANCE;
-                                });
-                            }
-                            return Unit.INSTANCE;
-                        }
+                        null
                 );
+                // Change and lifecycle (ready/focus/blur) events share one channel; JS splits them by event name.
+                paymentElementView.onChange(event ->
+                        fireEvent(event.getEventName(), event.getPayload(), "paymentElement"));
+                paymentElementView.onReady(() -> fireEvent("ready", null, "paymentElement"));
+                paymentElementView.onFocus(() -> fireEvent("focus", null, "paymentElement"));
+                paymentElementView.onBlur(() -> fireEvent("blur", null, "paymentElement"));
                 paymentElementBound.onPaymentResult(new PaymentResultListener() {
                     @Override
                     public void onPaymentResult(@NonNull PaymentResult paymentResult) {
@@ -353,17 +333,12 @@ public class HyperswitchImpl {
                 }
                 unbindCvcWidget();
                 Map<String, Object> configMap = jsObjectToMap(createOptions);
-                cvcWidgetBound = elements.bind(
-                        cvcWidgetView,
-                        configMap,
-                        builder -> {
-                            builder.on(CvcWidgetEvents.CvcStatus.INSTANCE, event -> {
-                                fireEvent("CVC_STATUS", event.getPayload(), "cvcWidget");
-                                return Unit.INSTANCE;
-                            });
-                            return Unit.INSTANCE;
-                        }
-                );
+                cvcWidgetBound = elements.bind(cvcWidgetView, configMap, null);
+                cvcWidgetView.onChange(event ->
+                        fireEvent(event.getEventName(), event.getPayload(), "cvcWidget"));
+                cvcWidgetView.onReady(() -> fireEvent("ready", null, "cvcWidget"));
+                cvcWidgetView.onFocus(() -> fireEvent("focus", null, "cvcWidget"));
+                cvcWidgetView.onBlur(() -> fireEvent("blur", null, "cvcWidget"));
                 Logger.info("Hyperswitch", "CVCWidget bound with configuration Map");
             }
         });
@@ -502,13 +477,14 @@ public class HyperswitchImpl {
 
         if (sheetOptions != null) {
             Map<String, Object> configurationMap = jsObjectToMap(sheetOptions);
-            configurationMap.remove("subscribedEvents");
             if (!configurationMap.isEmpty()) {
                 configMap.put("configuration", configurationMap);
             }
         }
 
-        paymentSession.presentPaymentSheet(configMap, null, paymentResult -> {
+        PaymentEventListener onChange = event ->
+                fireEvent(event.getEventName(), event.getPayload(), "paymentSheet");
+        paymentSession.presentPaymentSheet(configMap, onChange, paymentResult -> {
             try {
                 JSObject jsResult = new JSObject();
                 if (paymentResult instanceof PaymentResult.Completed) {
@@ -799,16 +775,5 @@ public class HyperswitchImpl {
             Logger.error("Hyperswitch", "Error converting JSObject to Map", e);
             return new HashMap<>();
         }
-    }
-
-    private List<String> extractAndRemoveSubscribedEvents(Map<String, Object> map) {
-        List<String> result = new ArrayList<>();
-        Object raw = map.remove("subscribedEvents");
-        if (raw instanceof List<?>) {
-            for (Object item : (List<?>) raw) {
-                if (item instanceof String) result.add((String) item);
-            }
-        }
-        return result;
     }
 }

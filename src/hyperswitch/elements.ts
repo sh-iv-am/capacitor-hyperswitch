@@ -2,6 +2,7 @@ import type {
   Elements,
   HyperswitchPlugin,
   PaymentElement,
+  PaymentEvent,
   PaymentEventData,
   PaymentResult,
   CvcWidget,
@@ -16,6 +17,7 @@ import type {
 import { paymentElementPlugin } from './views/payment-element/index';
 import { cvcWidgetPlugin } from './views/cvc-widget/index';
 import { createPaymentSessionHandler } from './PaymentSession';
+import { listenerFor, toPaymentEvent, withSubscriptionEvents } from './events';
 
 let updateIntentInProgress = false;
 
@@ -118,14 +120,12 @@ export function createPaymentElement(plugin: HyperswitchPlugin, options?: Paymen
   }
 
   return {
-    on(event: string, handler?: (data?: PaymentEventData) => void): removeListenerFunction {
+    on(event: string, handler?: (event: any) => void): removeListenerFunction {
       if (!handler) return { remove: () => {} };
-      // Subscribe persistently via Capacitor's addListener.
-      // Native side fires "paymentElementEvent" for all widget events; we filter by type here.
+      // Native fires "paymentElementEvent" for subscribed and lifecycle events; listenerFor splits them.
+      const listener = listenerFor(event, handler);
       return plugin.addListener('paymentElementEvent', (eventData: PaymentEventData) => {
-        if (eventData.type === event) {
-          handler(eventData);
-        }
+        listener(toPaymentEvent(eventData));
       });
     },
     onPaymentResult(handler?: (data: PaymentResult) => void): removeListenerFunction {
@@ -177,7 +177,7 @@ export function createPaymentElement(plugin: HyperswitchPlugin, options?: Paymen
       mountedElement = el;
       // Create the native view first, then bind it via createElement
       paymentElementPlugin.create({ ...getContentPosition(el) });
-      plugin.createElement({ type: 'paymentElement', createOptions: options ?? {} });
+      plugin.createElement({ type: 'paymentElement', createOptions: withSubscriptionEvents(options) });
       startObserving(el);
       syncNativeView();
       plugin.elementMount({ selector });
@@ -200,7 +200,8 @@ export function createCvcWidget(plugin: HyperswitchPlugin, options?: CvcWidgetOp
   let mutationObserver: MutationObserver | null = null;
   let intersectionObserver: IntersectionObserver | null = null;
   let onResize: (() => void) | null = null;
-  const eventHandlers: Map<string, Array<(data?: PaymentEventData) => void>> = new Map();
+  const eventListeners: Array<(event: PaymentEvent) => void> = [];
+  let nativeListener: removeListenerFunction | null = null;
 
   function syncNativeView(): void {
     if (!mountedElement) return;
@@ -225,13 +226,20 @@ export function createCvcWidget(plugin: HyperswitchPlugin, options?: CvcWidgetOp
     }
   }
 
-  // Set up event listener for CVC widget events
-  plugin.addListener('cvcWidgetEvent', (eventData: PaymentEventData) => {
-    if (eventData.type === 'CVC_STATUS') {
-      const handlers = eventHandlers.get('change');
-      handlers?.forEach((handler) => handler(eventData));
-    }
-  });
+  // One native listener per widget, added with the first handler and removed on unmount/destroy.
+  function ensureNativeListener(): void {
+    if (nativeListener) return;
+    nativeListener = plugin.addListener('cvcWidgetEvent', (eventData: PaymentEventData) => {
+      const paymentEvent = toPaymentEvent(eventData);
+      eventListeners.forEach((listener) => listener(paymentEvent));
+    });
+  }
+
+  function removeNativeListener(): void {
+    const listener = nativeListener;
+    nativeListener = null;
+    void Promise.resolve(listener).then((handle) => handle?.remove());
+  }
 
   return {
     mount(selector: string, mountOptions?: CvcWidgetOptions): void {
@@ -243,10 +251,10 @@ export function createCvcWidget(plugin: HyperswitchPlugin, options?: CvcWidgetOp
       mountedElement = el;
 
       // Merge options: mount options take precedence over create options
-      const mergedOptions: CvcWidgetOptions = {
+      const mergedOptions: CvcWidgetOptions = withSubscriptionEvents({
         ...options,
         ...mountOptions,
-      };
+      });
 
       // Create the native view first, then bind it via createElement
       cvcWidgetPlugin.create({ ...getContentPosition(el) });
@@ -286,28 +294,25 @@ export function createCvcWidget(plugin: HyperswitchPlugin, options?: CvcWidgetOp
     },
     unmount(): void {
       stopObserving();
+      removeNativeListener();
       cvcWidgetPlugin.destroy();
       mountedElement = null;
     },
     destroy(): void {
       stopObserving();
+      removeNativeListener();
       cvcWidgetPlugin.destroy();
       mountedElement = null;
     },
-    on(event: string, handler?: (data?: PaymentEventData) => void): removeListenerFunction | null {
+    on(event: string, handler?: (event: any) => void): removeListenerFunction | null {
       if (!handler) return { remove: () => {} };
-      if (!eventHandlers.has(event)) {
-        eventHandlers.set(event, []);
-      }
-      eventHandlers.get(event)?.push(handler);
+      const listener = listenerFor(event, handler);
+      eventListeners.push(listener);
+      ensureNativeListener();
       return {
         remove: () => {
-          const handlers = eventHandlers.get(event);
-          if (!handlers) return;
-          const index = handlers.indexOf(handler);
-          if (index !== -1) {
-            handlers.splice(index, 1);
-          }
+          const index = eventListeners.indexOf(listener);
+          if (index !== -1) eventListeners.splice(index, 1);
         },
       };
     },

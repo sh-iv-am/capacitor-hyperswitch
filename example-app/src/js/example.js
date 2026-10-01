@@ -63,6 +63,29 @@ window.initPaymentSession = async () => {
   }
 };
 
+// One handler receives every event listed in `subscriptionEvents`; branch on its name.
+function logPaymentEvent(event) {
+  switch (event.eventName) {
+    case 'paymentMethodChange':
+      console.log('payment method:', event.payload.paymentMethod, event.payload.paymentMethodType);
+      break;
+    case 'cardDetailsChange':
+      console.log('card:', event.payload.brand, 'complete:', event.payload.isCardNumberComplete);
+      break;
+    case 'formStatusChange':
+      console.log('form status:', event.payload.status);
+      break;
+    case 'billingDetailsChange':
+      console.log('billing:', event.payload.country, event.payload.state, event.payload.postalCode);
+      break;
+    case 'cvcStatusChange':
+      console.log('cvc:', JSON.stringify(event.payload));
+      break;
+    default:
+      console.log(event.eventName, JSON.stringify(event.payload));
+  }
+}
+
 // Path A: presentPaymentSheet
 
 window.presentSheet = async () => {
@@ -86,8 +109,9 @@ window.presentSheet = async () => {
         "layout": "accordion"
       },
       "primaryButtonColor": "#00A826",
-      "merchantDisplayName": "SuperPay"
-    });
+      "merchantDisplayName": "SuperPay",
+      "subscriptionEvents": ["paymentMethodChange", "formStatusChange"]
+    }, logPaymentEvent);
     out('sheetOutput', resultText(result));
   } catch (err) {
     out('sheetOutput', 'Error: ' + err.message);
@@ -143,16 +167,18 @@ window.mountCvcWidget = () => {
           scale: 1.0
         }
       },
-      placeholder: 'cvc123'
+      placeholder: 'cvc123',
+      subscriptionEvents: ['cvcStatusChange']
     }
   });
 
+  cvcWidget.on('ready', () => console.log('CVC widget ready'));
+  cvcWidget.on('focus', () => console.log('CVC widget focus'));
+  cvcWidget.on('blur', () => console.log('CVC widget blur'));
+
   cvcWidget.mount('#cvc-widget');
 
-  // Add event listener to show it's working
-  cvcWidget.on('change', (event) => {
-    console.log('CVC Widget event:', JSON.stringify(event));
-  });
+  cvcWidget.on('change', logPaymentEvent);
 
   out('savedMethodsOutput', 'CVC Widget mounted with configuration');
 };
@@ -226,7 +252,7 @@ window.mountPaymentElement = () => {
     type: 'paymentElement',
     options: {
       merchantDisplayName: 'Hyperswitch Store',
-      // subscribedEvents: ['FORM_STATUS'],
+      subscriptionEvents: ['paymentMethodChange', 'cardDetailsChange', 'formStatusChange', 'billingDetailsChange'],
       appearance: {
         colors: {
           light: {
@@ -294,11 +320,14 @@ window.mountPaymentElement = () => {
     }
   });
 
+  // Lifecycle events need no subscription and never reach on('change').
+  paymentElement.on('ready', () => console.log('PaymentElement ready (payment methods loaded)'));
+  paymentElement.on('focus', () => console.log('PaymentElement focus'));
+  paymentElement.on('blur', () => console.log('PaymentElement blur'));
+
   paymentElement.mount('#payment-element');
 
-  paymentElement.on('FORM_STATUS', (event) => console.log('eventt:', JSON.stringify(event)));
-  paymentElement.on('PAYMENT_METHOD_STATUS', (event) => console.log('eventt2:', JSON.stringify(event)));
-  paymentElement.on('PAYMENT_METHOD_INFO_CARD', (event) => console.log('eventt3:', JSON.stringify(event)));
+  paymentElement.on('change', logPaymentEvent);
 
   out('confirmOutput', 'PaymentElement mounted with ALL RED configuration');
 };

@@ -32,7 +32,7 @@ public class HyperswitchImpl {
     public typealias VoidCallback = () -> Void
     public typealias HandlerReadyCallback = (String) -> Void
 
-    /// Fires when a native widget emits an event (e.g. CVC_STATUS, FORM_STATUS).
+    /// Fires when a native widget emits an event (e.g. cvcStatusChange, formStatusChange).
     public typealias NativeEventListener = (_ type: String, _ payload: [String: Any], _ source: String) -> Void
 
     // ── Event forwarding ───────────────────────────────────────────────────────
@@ -139,17 +139,15 @@ public class HyperswitchImpl {
     /// Builds the SDK widget with session data and attaches it to the container
     /// the plugin already placed in the scrollView during create().
     func createElement(type: String, createOptions: [String: Any]?) {
-        guard let paymentSession = paymentSession,
-            let hyperswitch = hyperswitch
-        else {
+        guard let paymentSession = paymentSession else {
             print("[Hyperswitch] elements() must be called before createElement()")
             return
         }
 
         DispatchQueue.main.async {
             let lower = type.lowercased()
-            var configMap = createOptions ?? [:]
-            let subscribedEvents = Self.extractAndRemoveSubscribedEvents(&configMap)
+            // `subscriptionEvents` stays in the map; the SDK turns it into the bundle's subscription.
+            let configMap = createOptions ?? [:]
 
             if lower == "paymentelement" || lower == "payment" {
                 guard let container = self.paymentElementContainer else {
@@ -167,11 +165,15 @@ public class HyperswitchImpl {
                             payload: self.paymentResultToDict(completion),
                             source: "onPaymentResultEvent"
                         )
-                    },
-                    subscribe: { [weak self] builder in
-                        self?.bindPaymentElementEvents(builder: builder, subscribed: subscribedEvents, source: "paymentElement")
                     }
                 )
+                // Change and lifecycle (ready/focus/blur) events share one channel; JS splits them by event name.
+                paymentElementref.onChange { [weak self] event in
+                    self?.fireEvent(type: event.eventName, payload: event.payload, source: "paymentElement")
+                }
+                paymentElementref.onReady { [weak self] in self?.fireEvent(type: "ready", payload: nil, source: "paymentElement") }
+                paymentElementref.onFocus { [weak self] in self?.fireEvent(type: "focus", payload: nil, source: "paymentElement") }
+                paymentElementref.onBlur { [weak self] in self?.fireEvent(type: "blur", payload: nil, source: "paymentElement") }
                 paymentElementref.shouldProceedWithPayment { data, callback in
                     self.onPaymentConfirmCallback = callback
                     do {
@@ -197,15 +199,13 @@ public class HyperswitchImpl {
                     print("[Hyperswitch] CVCWidget container not registered — call create() first")
                     return
                 }
-                container.attach(
-                    hyperswitch: hyperswitch,
-                    paymentSession: paymentSession,
-                    configuration: configMap
-                ) { [weak self] builder in
-                    builder.on(.cvcStatus) { event in
-                        self?.fireEvent(type: PaymentEventType.cvcStatus.rawValue, payload: event.payload, source: "cvcWidget")
-                    }
+                let cvcWidget = container.attach(configuration: configMap)
+                cvcWidget.onChange { [weak self] event in
+                    self?.fireEvent(type: event.eventName, payload: event.payload, source: "cvcWidget")
                 }
+                cvcWidget.onReady { [weak self] in self?.fireEvent(type: "ready", payload: nil, source: "cvcWidget") }
+                cvcWidget.onFocus { [weak self] in self?.fireEvent(type: "focus", payload: nil, source: "cvcWidget") }
+                cvcWidget.onBlur { [weak self] in self?.fireEvent(type: "blur", payload: nil, source: "cvcWidget") }
                 print("[Hyperswitch] CVCWidget created and placed successfully")
             }
         }
@@ -215,46 +215,6 @@ public class HyperswitchImpl {
         if cb != nil {
             cb?(proceed)
         }
-    }
-
-    private func bindPaymentElementEvents(
-        builder: PaymentEventSubscriptionBuilder,
-        subscribed: [String],
-        source: String
-    ) {
-        if subscribed.contains(PaymentEventType.formStatus.rawValue) {
-            builder.on(.formStatus) { [weak self] event in
-                self?.fireEvent(type: PaymentEventType.formStatus.rawValue, payload: event.payload, source: source)
-            }
-        }
-        if subscribed.contains(PaymentEventType.paymentMethodStatus.rawValue) {
-            builder.on(.paymentMethodStatus) { [weak self] event in
-                self?.fireEvent(type: PaymentEventType.paymentMethodStatus.rawValue, payload: event.payload, source: source)
-            }
-        }
-        if subscribed.contains(PaymentEventType.paymentMethodInfoCard.rawValue) {
-            builder.on(.paymentMethodInfoCard) { [weak self] event in
-                self?.fireEvent(type: PaymentEventType.paymentMethodInfoCard.rawValue, payload: event.payload, source: source)
-            }
-        }
-        if subscribed.contains(PaymentEventType.paymentMethodInfoBillingAddress.rawValue) {
-            builder.on(.paymentMethodInfoBillingAddress) { [weak self] event in
-                self?.fireEvent(type: PaymentEventType.paymentMethodInfoBillingAddress.rawValue, payload: event.payload, source: source)
-            }
-        }
-
-        if subscribed.contains(PaymentEventType.cvcStatus.rawValue) {
-            builder.on(.cvcStatus) { [weak self] event in
-                self?.fireEvent(type: PaymentEventType.paymentMethodInfoBillingAddress.rawValue, payload: event.payload, source: source)
-            }
-        }
-    }
-
-    private static func extractAndRemoveSubscribedEvents(_ map: inout [String: Any]) -> [String] {
-        guard let raw = map.removeValue(forKey: "subscribedEvents") else { return [] }
-        if let arr = raw as? [String] { return arr }
-        if let arr = raw as? [Any] { return arr.compactMap { $0 as? String } }
-        return []
     }
 
     // ── updateIntent ───────────────────────────────────────────────────────────
@@ -318,8 +278,13 @@ public class HyperswitchImpl {
         let params: [String: Any] = sheetOptions ?? [:]
 
         DispatchQueue.main.async {
-            paymentSession.presentPaymentSheetWithParams(viewController: viewController, params: params) {
-                result in
+            paymentSession.presentPaymentSheetWithParams(
+                viewController: viewController,
+                params: params,
+                onChange: { [weak self] event in
+                    self?.fireEvent(type: event.eventName, payload: event.payload, source: "paymentSheet")
+                }
+            ) { result in
                 onResult(self.paymentResultToDict(result))
             }
         }
