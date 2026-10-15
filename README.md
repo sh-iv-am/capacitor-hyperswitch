@@ -1357,7 +1357,7 @@ Creates a new function.
 | **`customer`**                                     | <code><a href="#customerconfiguration">CustomerConfiguration</a></code>           |
 | **`paymentSheetHeaderLabel`**                      | <code>string</code>                                                               |
 | **`savedPaymentSheetHeaderLabel`**                 | <code>string</code>                                                               |
-| **`subscribedEvents`**                             | <code>SubscriptionEvent[]</code>                                                  |
+| **`subscriptionEvents`**                             | <code>SubscriptionEvent[]</code>                                                  |
 | **`hideConfirmButton`**                            | <code>boolean</code>                                                              |
 | **`locale`**                                       | <code><a href="#locale">locale</a></code>                                         |
 | **`redirectionInfo`**                              | <code><a href="#redirectioninfo">RedirectionInfo</a></code>                       |
@@ -1642,7 +1642,9 @@ Creates a new function.
 
 From T, pick a set of properties whose keys are in the union K
 
-<code>{ [P in K]: T[P]; }</code>
+<code>{
+ [P in K]: T[P];
+ }</code>
 
 
 #### PaymentMethod
@@ -1654,7 +1656,9 @@ From T, pick a set of properties whose keys are in the union K
 
 Construct a type with a set of properties K of type T
 
-<code>{ [P in K]: T; }</code>
+<code>{
+ [P in K]: T;
+ }</code>
 
 
 #### PropertyKey
@@ -1729,7 +1733,7 @@ Construct a type with a set of properties K of type T
 
 #### SubscriptionEvent
 
-<code>'PAYMENT_METHOD_INFO_CARD' | 'PAYMENT_METHOD_STATUS' | 'FORM_STATUS' | 'PAYMENT_METHOD_INFO_BILLING_ADDRESS'</code>
+<code>'cardDetailsChange' | 'paymentMethodChange' | 'formStatusChange' | 'billingDetailsChange' | 'cvcStatusChange'</code>
 
 
 #### locale

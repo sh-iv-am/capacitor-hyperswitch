@@ -15,8 +15,6 @@ export interface PaymentEventData {
 export interface PaymentEvent {
   eventName: SubscriptionEvent;
   payload: Record<string, any>;
-  /** @deprecated Use `eventName`. Carries the pre-rename name (e.g. `CVC_STATUS`) where one exists. */
-  type: string;
 }
 
 /**

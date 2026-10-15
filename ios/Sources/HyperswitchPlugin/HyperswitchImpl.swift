@@ -146,7 +146,7 @@ public class HyperswitchImpl {
 
         DispatchQueue.main.async {
             let lower = type.lowercased()
-            // `subscriptionEvents` stays in the map; the SDK turns it into the bundle's subscription.
+            // `subscriptionEvents` passes through unchanged to client-core.
             let configMap = createOptions ?? [:]
 
             if lower == "paymentelement" || lower == "payment" {

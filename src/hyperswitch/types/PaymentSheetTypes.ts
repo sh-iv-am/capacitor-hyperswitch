@@ -8,13 +8,6 @@ export type SubscriptionEvent =
   | 'billingDetailsChange'
   | 'cvcStatusChange';
 
-/** @deprecated Pre-rename event names; still accepted and mapped to {@link SubscriptionEvent}. */
-export type LegacySubscriptionEvent =
-  | 'PAYMENT_METHOD_INFO_CARD'
-  | 'PAYMENT_METHOD_STATUS'
-  | 'FORM_STATUS'
-  | 'PAYMENT_METHOD_INFO_BILLING_ADDRESS'
-  | 'CVC_STATUS';
 
 export type Theme =
   | 'Default'
@@ -273,8 +266,6 @@ export interface PaymentSheetOptions {
   savedPaymentSheetHeaderLabel?: string;
   /** Events delivered to `on('change')`. Nothing is emitted for events not listed. */
   subscriptionEvents?: SubscriptionEvent[];
-  /** @deprecated Use `subscriptionEvents`. */
-  subscribedEvents?: (SubscriptionEvent | LegacySubscriptionEvent)[];
   hideConfirmButton?: boolean;
   locale?: locale;
   redirectionInfo?: RedirectionInfo;
