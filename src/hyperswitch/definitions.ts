@@ -59,6 +59,11 @@ export interface HyperswitchPlugin {
   elementFocus(): Promise<void>;
   elementClear(): Promise<void>;
   addListener(
+    event: 'paymentEvent',
+    handler: (data: PaymentEventData) => void,
+  ): Promise<{ remove: () => Promise<void> }>;
+
+  addListener(
     event: 'paymentElementEvent',
     handler: (data: PaymentEventData) => void,
   ): Promise<{ remove: () => Promise<void> }>;

@@ -1,7 +1,7 @@
 import { removeListenerFunction } from './PaymentElementTypes';
 import { ColorType, Font, Shapes } from './AppearanceTypes';
-import { PaymentEventData } from './PaymentTypes';
-import { Theme } from './PaymentSheetTypes';
+import { ElementEvent, PaymentEvent } from './PaymentTypes';
+import { SubscriptionEvent, Theme } from './PaymentSheetTypes';
 
 export interface CvcAppearance {
   theme?: Theme;
@@ -15,11 +15,16 @@ export interface CvcWidgetOptions {
   placeholder?: string;
   sdkAuthorization?: string;
   cvcIcon?: 'hidden' | 'shown';
+  /** Events delivered to `on('change')`; the CVC widget emits `cvcStatusChange`. */
+  subscriptionEvents?: SubscriptionEvent[];
 }
 
 export interface CvcWidget {
   mount(selector: string, options?: CvcWidgetOptions): void;
   unmount(): void;
   destroy(): void;
-  on(event: string, handler?: (data?: PaymentEventData) => void): removeListenerFunction | null;
+  /** Receives every event listed in `subscriptionEvents`; filter on `event.eventName`. */
+  on(event: 'change', handler?: (event: PaymentEvent) => void): removeListenerFunction | null;
+  /** Lifecycle events; see {@link ElementEvent}. */
+  on(event: ElementEvent, handler?: () => void): removeListenerFunction | null;
 }

@@ -9,15 +9,13 @@ public final class PaymentElementContainer: UIView {
     func attach(
         paymentSession: PaymentSession,
         configuration: [String: Any],
-        completion: @escaping ((PaymentResult) -> Void),
-        subscribe: ((PaymentEventSubscriptionBuilder) -> Void)? = nil
+        completion: @escaping ((PaymentResult) -> Void)
     ) -> PaymentWidget {
         if let existing = widget { return existing }
         let widget = PaymentWidget(
             paymentSession: paymentSession,
             configurationDict: configuration,
-            completion: completion,
-            subscribe: subscribe
+            completion: completion
         )
         widget.frame = bounds
         //        widget.autoresizingMask = [.flexibleWidth, .flexibleHeight]

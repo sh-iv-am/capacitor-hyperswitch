@@ -82,14 +82,15 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
       iframe.contentWindow.postMessage(JSON.stringify({ initialProps: { props } }), TARGET_ORIGIN);
     };
 
+    const channel = iframeType === 'cvcWidget' ? 'cvcWidgetEvent' : 'paymentElementEvent';
     window.addEventListener('message', (event: MessageEvent) => {
-      if (event.origin !== TARGET_ORIGIN) return;
+      if (event.origin !== TARGET_ORIGIN || event.source !== iframe.contentWindow) return;
       try {
         const data = JSON.parse(event.data);
         if (data.sdkLoaded) sendMessage();
         if (data.type && data.payload !== undefined) {
-          // Forward widget events to JS listeners
-          this.notifyListeners('paymentEvent', { type: data.type, payload: data.payload ?? {} });
+          // Forward this element's events on its own channel, as the native plugins do.
+          this.notifyListeners(channel, { type: data.type, payload: data.payload ?? {} });
         }
       } catch (_) {
         /* ignore */
@@ -190,10 +191,13 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
       };
 
       const onMessage = (event: MessageEvent) => {
-        if (event.origin !== TARGET_ORIGIN) return;
+        if (event.origin !== TARGET_ORIGIN || event.source !== iframe.contentWindow) return;
         try {
           const data = JSON.parse(event.data);
           if (data.sdkLoaded) sendMessage();
+          if (data.type && data.payload !== undefined) {
+            this.notifyListeners('paymentEvent', { type: data.type, payload: data.payload ?? {} });
+          }
           if (data.status) {
             let type: PaymentResult['type'];
             switch (data.status) {
@@ -251,10 +255,15 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
     console.log('ELEMENT_CLEAR');
   }
 
-  // addListener is provided by WebPlugin base class; this override satisfies the
-  // HyperswitchPlugin interface typing for the 'paymentEvent' event.
+  /* addListener is provided by WebPlugin base class; this override satisfies the
+     HyperswitchPlugin interface typing for its event channels. */
   addListener(
-    event: 'paymentElementEvent' | 'cvcWidgetEvent' | 'onPaymentResultEvent' | 'onPaymentConfirmButtonClickEvent',
+    event:
+      | 'paymentEvent'
+      | 'paymentElementEvent'
+      | 'cvcWidgetEvent'
+      | 'onPaymentResultEvent'
+      | 'onPaymentConfirmButtonClickEvent',
     handler: (data: import('./definitions').PaymentEventData) => void,
   ): Promise<{ remove: () => Promise<void> }> {
     return super.addListener(event, handler);

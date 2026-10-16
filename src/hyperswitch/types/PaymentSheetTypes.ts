@@ -1,10 +1,13 @@
 import { ColorType, Font, Shapes } from './AppearanceTypes';
 
+/** Events that can be listed in `subscriptionEvents` and received through `on('change')`. */
 export type SubscriptionEvent =
-  | 'PAYMENT_METHOD_INFO_CARD'
-  | 'PAYMENT_METHOD_STATUS'
-  | 'FORM_STATUS'
-  | 'PAYMENT_METHOD_INFO_BILLING_ADDRESS';
+  | 'cardDetailsChange'
+  | 'paymentMethodChange'
+  | 'formStatusChange'
+  | 'billingDetailsChange'
+  | 'cvcStatusChange';
+
 
 export type Theme =
   | 'Default'
@@ -261,7 +264,8 @@ export interface PaymentSheetOptions {
   customer?: CustomerConfiguration;
   paymentSheetHeaderLabel?: string;
   savedPaymentSheetHeaderLabel?: string;
-  subscribedEvents?: SubscriptionEvent[];
+  /** Events delivered to `on('change')`. Nothing is emitted for events not listed. */
+  subscriptionEvents?: SubscriptionEvent[];
   hideConfirmButton?: boolean;
   locale?: locale;
   redirectionInfo?: RedirectionInfo;
