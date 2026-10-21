@@ -169,7 +169,7 @@ public class HyperswitchImpl {
                 )
                 // Change and lifecycle (ready/focus/blur) events share one channel; JS splits them by event name.
                 paymentElementref.onChange { [weak self] event in
-                    self?.fireEvent(type: event.eventName, payload: event.payload, source: "paymentElement")
+                    self?.fireEvent(type: event.eventName.rawValue, payload: event.payload.toDictionary(), source: "paymentElement")
                 }
                 paymentElementref.onReady { [weak self] in self?.fireEvent(type: "ready", payload: nil, source: "paymentElement") }
                 paymentElementref.onFocus { [weak self] in self?.fireEvent(type: "focus", payload: nil, source: "paymentElement") }
@@ -201,7 +201,7 @@ public class HyperswitchImpl {
                 }
                 let cvcWidget = container.attach(configuration: configMap)
                 cvcWidget.onChange { [weak self] event in
-                    self?.fireEvent(type: event.eventName, payload: event.payload, source: "cvcWidget")
+                    self?.fireEvent(type: event.eventName.rawValue, payload: event.payload.toDictionary(), source: "cvcWidget")
                 }
                 cvcWidget.onReady { [weak self] in self?.fireEvent(type: "ready", payload: nil, source: "cvcWidget") }
                 cvcWidget.onFocus { [weak self] in self?.fireEvent(type: "focus", payload: nil, source: "cvcWidget") }
@@ -282,7 +282,7 @@ public class HyperswitchImpl {
                 viewController: viewController,
                 params: params,
                 onChange: { [weak self] event in
-                    self?.fireEvent(type: event.eventName, payload: event.payload, source: "paymentSheet")
+                    self?.fireEvent(type: event.eventName.rawValue, payload: event.payload.toDictionary(), source: "paymentSheet")
                 }
             ) { result in
                 onResult(self.paymentResultToDict(result))

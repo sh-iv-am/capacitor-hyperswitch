@@ -1,12 +1,8 @@
+import type { PaymentEventPayloads } from './PaymentTypes';
 import { ColorType, Font, Shapes } from './AppearanceTypes';
 
 /** Events that can be listed in `subscriptionEvents` and received through `on('change')`. */
-export type SubscriptionEvent =
-  | 'cardDetailsChange'
-  | 'paymentMethodChange'
-  | 'formStatusChange'
-  | 'billingDetailsChange'
-  | 'cvcStatusChange';
+export type SubscriptionEvent = keyof PaymentEventPayloads;
 
 
 export type Theme =

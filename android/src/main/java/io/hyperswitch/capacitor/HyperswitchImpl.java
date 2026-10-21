@@ -294,12 +294,11 @@ public class HyperswitchImpl {
                 Map<String, Object> configMap = jsObjectToMap(createOptions);
                 paymentElementBound = elements.bind(
                         paymentElementView,
-                        sanitizeHiddenPaymentMethods(configMap),
-                        null
+                        sanitizeHiddenPaymentMethods(configMap)
                 );
                 // Change and lifecycle (ready/focus/blur) events share one channel; JS splits them by event name.
                 paymentElementView.onChange(event ->
-                        fireEvent(event.getEventName(), event.getPayload(), "paymentElement"));
+                        fireEvent(event.getEventName().getValue(), event.getPayload().toMap(), "paymentElement"));
                 paymentElementView.onReady(() -> fireEvent("ready", null, "paymentElement"));
                 paymentElementView.onFocus(() -> fireEvent("focus", null, "paymentElement"));
                 paymentElementView.onBlur(() -> fireEvent("blur", null, "paymentElement"));
@@ -333,9 +332,9 @@ public class HyperswitchImpl {
                 }
                 unbindCvcWidget();
                 Map<String, Object> configMap = jsObjectToMap(createOptions);
-                cvcWidgetBound = elements.bind(cvcWidgetView, configMap, null);
+                cvcWidgetBound = elements.bind(cvcWidgetView, configMap);
                 cvcWidgetView.onChange(event ->
-                        fireEvent(event.getEventName(), event.getPayload(), "cvcWidget"));
+                        fireEvent(event.getEventName().getValue(), event.getPayload().toMap(), "cvcWidget"));
                 cvcWidgetView.onReady(() -> fireEvent("ready", null, "cvcWidget"));
                 cvcWidgetView.onFocus(() -> fireEvent("focus", null, "cvcWidget"));
                 cvcWidgetView.onBlur(() -> fireEvent("blur", null, "cvcWidget"));
@@ -483,7 +482,7 @@ public class HyperswitchImpl {
         }
 
         PaymentEventListener onChange = event ->
-                fireEvent(event.getEventName(), event.getPayload(), "paymentSheet");
+                fireEvent(event.getEventName().getValue(), event.getPayload().toMap(), "paymentSheet");
         paymentSession.presentPaymentSheet(configMap, onChange, paymentResult -> {
             try {
                 JSObject jsResult = new JSObject();

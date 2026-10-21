@@ -28,7 +28,10 @@ let defaultProps = {
 };
 
 // Pending element iframes keyed by type, waiting for elementMount
-const pendingElements: Map<string, { iframeType: string }> = new Map();
+const pendingElements: Map<
+  string,
+  { iframeType: string; configuration: PaymentElementOptions | CvcWidgetOptions }
+> = new Map();
 // Active mounted iframes keyed by selector
 const mountedIframes: Map<string, HTMLIFrameElement> = new Map();
 
@@ -51,7 +54,7 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
   }): Promise<void> {
     console.log('CREATE_ELEMENT', options);
     const iframeType = options.type === 'cvcWidget' || options.type === 'cvc' ? 'cvcWidget' : 'widgetPaymentSheet';
-    pendingElements.set(options.type, { iframeType });
+    pendingElements.set(options.type, { iframeType, configuration: options.createOptions });
   }
 
   async elementMount(options: { selector: string }): Promise<void> {
@@ -60,7 +63,7 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
     // Find the most recently created element type
     const entry = pendingElements.size > 0 ? [...pendingElements.entries()].pop() : null;
     if (!entry) return;
-    const [elementType, { iframeType }] = entry;
+    const [elementType, { iframeType, configuration }] = entry;
     pendingElements.delete(elementType);
 
     const container = document.querySelector(options.selector) as HTMLElement | null;
@@ -75,7 +78,11 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
     container.appendChild(iframe);
     mountedIframes.set(options.selector, iframe);
 
-    const props = { ...defaultProps, type: iframeType };
+    const props = {
+      ...defaultProps,
+      type: iframeType,
+      configuration: { ...defaultProps.configuration, ...configuration },
+    };
 
     const sendMessage = () => {
       if (!iframe.contentWindow) return;
@@ -151,6 +158,11 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
   async presentPaymentSheet(options: { sheetOptions: PaymentSheetOptions }): Promise<PaymentResult> {
     console.log('PRESENT_PAYMENT_SHEET', options);
 
+    const props = {
+      ...defaultProps,
+      configuration: { ...defaultProps.configuration, ...options.sheetOptions },
+    };
+
     const CONTAINER_ID = 'hyperswitch-container';
     const IFRAME_ID = 'hyperswitch-mobile-iframe';
     const IFRAME_SRC = 'https://beta.hyperswitch.io/mobile/1.10.0/index.html';
@@ -187,7 +199,7 @@ export class HyperswitchWeb extends WebPlugin implements HyperswitchPlugin {
 
       const sendMessage = () => {
         if (!iframe.contentWindow) return;
-        iframe.contentWindow.postMessage(JSON.stringify({ initialProps: { props: defaultProps } }), TARGET_ORIGIN);
+        iframe.contentWindow.postMessage(JSON.stringify({ initialProps: { props } }), TARGET_ORIGIN);
       };
 
       const onMessage = (event: MessageEvent) => {

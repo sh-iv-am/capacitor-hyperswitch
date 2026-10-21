@@ -22,6 +22,27 @@ Sync native files
 npx cap sync
 ```
 
+## Typed payment events
+
+List events in `subscriptionEvents`, then handle them in one `change` listener.
+`PaymentEvent` is a discriminated union: checking `eventName` gives the matching payload
+type, including nullable card metadata and the nested CVC status.
+
+```ts
+paymentElement.on('change', (event) => {
+  if (event.eventName === 'paymentMethodChange') {
+    const saved: boolean = event.payload.isSavedPaymentMethod;
+    const method: string = event.payload.paymentMethod;
+  }
+  if (event.eventName === 'formStatusChange') {
+    const complete = event.payload.status === 'COMPLETE';
+  }
+});
+```
+
+The same typed event is delivered to the payment-sheet callback. Unknown names and
+malformed bridge payloads are ignored; lifecycle events have separate handlers.
+
 ## API
 
 <docgen-index>
@@ -49,6 +70,7 @@ npx cap sync
 * [`elementMount(...)`](#elementmount)
 * [`elementFocus()`](#elementfocus)
 * [`elementClear()`](#elementclear)
+* [`addListener('paymentEvent', ...)`](#addlistenerpaymentevent-)
 * [`addListener('paymentElementEvent', ...)`](#addlistenerpaymentelementevent-)
 * [`addListener('cvcWidgetEvent', ...)`](#addlistenercvcwidgetevent-)
 * [`addListener('onPaymentResultEvent', ...)`](#addlisteneronpaymentresultevent-)
@@ -354,6 +376,22 @@ elementClear() => Promise<void>
 --------------------
 
 
+### addListener('paymentEvent', ...)
+
+```typescript
+addListener(event: 'paymentEvent', handler: (data: PaymentEventData) => void) => Promise<{ remove: () => Promise<void>; }>
+```
+
+| Param         | Type                                                                             |
+| ------------- | -------------------------------------------------------------------------------- |
+| **`event`**   | <code>'paymentEvent'</code>                                                      |
+| **`handler`** | <code>(data: <a href="#paymenteventdata">PaymentEventData</a>) =&gt; void</code> |
+
+**Returns:** <code>Promise&lt;{ remove: () =&gt; Promise&lt;void&gt;; }&gt;</code>
+
+--------------------
+
+
 ### addListener('paymentElementEvent', ...)
 
 ```typescript
@@ -465,12 +503,13 @@ addListener(event: 'onPaymentConfirmButtonClickEvent', handler: (data: PaymentEv
 
 #### CvcWidgetOptions
 
-| Prop                   | Type                                                    |
-| ---------------------- | ------------------------------------------------------- |
-| **`appearance`**       | <code><a href="#cvcappearance">CvcAppearance</a></code> |
-| **`placeholder`**      | <code>string</code>                                     |
-| **`sdkAuthorization`** | <code>string</code>                                     |
-| **`cvcIcon`**          | <code>'shown' \| 'hidden'</code>                        |
+| Prop                     | Type                                                                            | Description                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| **`appearance`**         | <code><a href="#cvcappearance">CvcAppearance</a></code>                         |                                                                             |
+| **`placeholder`**        | <code>string</code>                                                             |                                                                             |
+| **`sdkAuthorization`**   | <code>string</code>                                                             |                                                                             |
+| **`cvcIcon`**            | <code>'shown' \| 'hidden'</code>                                                |                                                                             |
+| **`subscriptionEvents`** | <code>(keyof <a href="#paymenteventpayloads">PaymentEventPayloads</a>)[]</code> | Events delivered to `on('change')`; the CVC widget emits `cvcStatusChange`. |
 
 
 #### CvcAppearance
@@ -1332,44 +1371,44 @@ Creates a new function.
 
 #### PaymentSheetOptions
 
-| Prop                                               | Type                                                                              |
-| -------------------------------------------------- | --------------------------------------------------------------------------------- |
-| **`sdkAuthorization`**                             | <code>string</code>                                                               |
-| **`allowsDelayedPaymentMethods`**                  | <code>boolean</code>                                                              |
-| **`appearance`**                                   | <code><a href="#appearance">Appearance</a></code>                                 |
-| **`shippingDetails`**                              | <code><a href="#addressdetails">AddressDetails</a></code>                         |
-| **`primaryButtonLabel`**                           | <code>string</code>                                                               |
-| **`paymentSheetHeaderText`**                       | <code>string</code>                                                               |
-| **`savedPaymentScreenHeaderText`**                 | <code>string</code>                                                               |
-| **`merchantDisplayName`**                          | <code>string</code>                                                               |
-| **`billingDetails`**                               | <code><a href="#addressdetails">AddressDetails</a></code>                         |
-| **`primaryButtonColor`**                           | <code>string</code>                                                               |
-| **`allowsPaymentMethodsRequiringShippingAddress`** | <code>boolean</code>                                                              |
-| **`displaySavedPaymentMethodsCheckbox`**           | <code>boolean</code>                                                              |
-| **`displaySavedPaymentMethods`**                   | <code>boolean</code>                                                              |
-| **`displayPayButton`**                             | <code>boolean</code>                                                              |
-| **`placeholder`**                                  | <code><a href="#placeholder">Placeholder</a></code>                               |
-| **`defaultView`**                                  | <code>boolean</code>                                                              |
-| **`disableBranding`**                              | <code>boolean</code>                                                              |
-| **`netceteraSDKApiKey`**                           | <code>string</code>                                                               |
-| **`displayDefaultSavedPaymentIcon`**               | <code>boolean</code>                                                              |
-| **`enablePartialLoading`**                         | <code>boolean</code>                                                              |
-| **`customer`**                                     | <code><a href="#customerconfiguration">CustomerConfiguration</a></code>           |
-| **`paymentSheetHeaderLabel`**                      | <code>string</code>                                                               |
-| **`savedPaymentSheetHeaderLabel`**                 | <code>string</code>                                                               |
-| **`subscriptionEvents`**                             | <code>SubscriptionEvent[]</code>                                                  |
-| **`hideConfirmButton`**                            | <code>boolean</code>                                                              |
-| **`locale`**                                       | <code><a href="#locale">locale</a></code>                                         |
-| **`redirectionInfo`**                              | <code><a href="#redirectioninfo">RedirectionInfo</a></code>                       |
-| **`stickyPayButton`**                              | <code>boolean</code>                                                              |
-| **`paymentMethodLayout`**                          | <code><a href="#paymentmethodlayout">PaymentMethodLayout</a></code>               |
-| **`walletButtonsConfiguration`**                   | <code><a href="#walletbuttonsconfiguration">WalletButtonsConfiguration</a></code> |
-| **`paymentMethodsConfig`**                         | <code>PaymentMethodConfig[]</code>                                                |
-| **`paymentMethodOrder`**                           | <code>string[]</code>                                                             |
-| **`preloadCardElement`**                           | <code>boolean</code>                                                              |
-| **`alwaysSendCustomerAcceptance`**                 | <code>boolean</code>                                                              |
-| **`opensCardScannerAutomatically`**                | <code>boolean</code>                                                              |
-| **`splitCardFields`**                              | <code>boolean</code>                                                              |
+| Prop                                               | Type                                                                              | Description                                                                   |
+| -------------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| **`sdkAuthorization`**                             | <code>string</code>                                                               |                                                                               |
+| **`allowsDelayedPaymentMethods`**                  | <code>boolean</code>                                                              |                                                                               |
+| **`appearance`**                                   | <code><a href="#appearance">Appearance</a></code>                                 |                                                                               |
+| **`shippingDetails`**                              | <code><a href="#addressdetails">AddressDetails</a></code>                         |                                                                               |
+| **`primaryButtonLabel`**                           | <code>string</code>                                                               |                                                                               |
+| **`paymentSheetHeaderText`**                       | <code>string</code>                                                               |                                                                               |
+| **`savedPaymentScreenHeaderText`**                 | <code>string</code>                                                               |                                                                               |
+| **`merchantDisplayName`**                          | <code>string</code>                                                               |                                                                               |
+| **`billingDetails`**                               | <code><a href="#addressdetails">AddressDetails</a></code>                         |                                                                               |
+| **`primaryButtonColor`**                           | <code>string</code>                                                               |                                                                               |
+| **`allowsPaymentMethodsRequiringShippingAddress`** | <code>boolean</code>                                                              |                                                                               |
+| **`displaySavedPaymentMethodsCheckbox`**           | <code>boolean</code>                                                              |                                                                               |
+| **`displaySavedPaymentMethods`**                   | <code>boolean</code>                                                              |                                                                               |
+| **`displayPayButton`**                             | <code>boolean</code>                                                              |                                                                               |
+| **`placeholder`**                                  | <code><a href="#placeholder">Placeholder</a></code>                               |                                                                               |
+| **`defaultView`**                                  | <code>boolean</code>                                                              |                                                                               |
+| **`disableBranding`**                              | <code>boolean</code>                                                              |                                                                               |
+| **`netceteraSDKApiKey`**                           | <code>string</code>                                                               |                                                                               |
+| **`displayDefaultSavedPaymentIcon`**               | <code>boolean</code>                                                              |                                                                               |
+| **`enablePartialLoading`**                         | <code>boolean</code>                                                              |                                                                               |
+| **`customer`**                                     | <code><a href="#customerconfiguration">CustomerConfiguration</a></code>           |                                                                               |
+| **`paymentSheetHeaderLabel`**                      | <code>string</code>                                                               |                                                                               |
+| **`savedPaymentSheetHeaderLabel`**                 | <code>string</code>                                                               |                                                                               |
+| **`subscriptionEvents`**                           | <code>(keyof <a href="#paymenteventpayloads">PaymentEventPayloads</a>)[]</code>   | Events delivered to `on('change')`. Nothing is emitted for events not listed. |
+| **`hideConfirmButton`**                            | <code>boolean</code>                                                              |                                                                               |
+| **`locale`**                                       | <code><a href="#locale">locale</a></code>                                         |                                                                               |
+| **`redirectionInfo`**                              | <code><a href="#redirectioninfo">RedirectionInfo</a></code>                       |                                                                               |
+| **`stickyPayButton`**                              | <code>boolean</code>                                                              |                                                                               |
+| **`paymentMethodLayout`**                          | <code><a href="#paymentmethodlayout">PaymentMethodLayout</a></code>               |                                                                               |
+| **`walletButtonsConfiguration`**                   | <code><a href="#walletbuttonsconfiguration">WalletButtonsConfiguration</a></code> |                                                                               |
+| **`paymentMethodsConfig`**                         | <code>PaymentMethodConfig[]</code>                                                |                                                                               |
+| **`paymentMethodOrder`**                           | <code>string[]</code>                                                             |                                                                               |
+| **`preloadCardElement`**                           | <code>boolean</code>                                                              |                                                                               |
+| **`alwaysSendCustomerAcceptance`**                 | <code>boolean</code>                                                              |                                                                               |
+| **`opensCardScannerAutomatically`**                | <code>boolean</code>                                                              |                                                                               |
+| **`splitCardFields`**                              | <code>boolean</code>                                                              |                                                                               |
 
 
 #### Appearance
@@ -1619,10 +1658,12 @@ Creates a new function.
 
 #### PaymentEventData
 
-| Prop          | Type                                                            |
-| ------------- | --------------------------------------------------------------- |
-| **`type`**    | <code>string</code>                                             |
-| **`payload`** | <code><a href="#record">Record</a>&lt;string, string&gt;</code> |
+Raw event as it crosses the plugin bridge; for payment events `type` is the event name.
+
+| Prop          | Type                                                             |
+| ------------- | ---------------------------------------------------------------- |
+| **`type`**    | <code>string</code>                                              |
+| **`payload`** | <code><a href="#record">Record</a>&lt;string, unknown&gt;</code> |
 
 
 ### Type Aliases
@@ -1642,9 +1683,53 @@ Creates a new function.
 
 From T, pick a set of properties whose keys are in the union K
 
-<code>{
- [P in K]: T[P];
- }</code>
+<code>{ [P in K]: T[P]; }</code>
+
+
+#### SubscriptionEvent
+
+Events that can be listed in `subscriptionEvents` and received through `on('change')`.
+
+<code>keyof <a href="#paymenteventpayloads">PaymentEventPayloads</a></code>
+
+
+#### PaymentEventPayloads
+
+Adding a name here requires its payload to be defined as well.
+
+<code>{ cardDetailsChange: <a href="#carddetailschange">CardDetailsChange</a>; paymentMethodChange: <a href="#paymentmethodchange">PaymentMethodChange</a>; formStatusChange: <a href="#formstatuschange">FormStatusChange</a>; billingDetailsChange: <a href="#billingdetailschange">BillingDetailsChange</a>; cvcStatusChange: <a href="#cvcstatuschange">CvcStatusChange</a>; }</code>
+
+
+#### CardDetailsChange
+
+Payloads delivered to merchants by the current subscription events.
+
+<code>{ readonly bin: string | null; readonly extendedBin: string | null; readonly last4: string | null; readonly brand: string | null; readonly expiryMonth: string | null; readonly expiryYear: string | null; readonly formattedExpiry: string | null; readonly isCardNumberComplete: boolean; readonly isCardNumberValid: boolean; readonly isExpiryComplete: boolean; readonly isExpiryValid: boolean; readonly isCvcComplete: boolean; }</code>
+
+
+#### PaymentMethodChange
+
+<code>{ readonly paymentMethod: string; readonly paymentMethodType: string; readonly isSavedPaymentMethod: boolean; readonly isOneClickWallet: boolean; }</code>
+
+
+#### FormStatusChange
+
+<code>{ readonly status: <a href="#formstatusvalue">FormStatusValue</a> }</code>
+
+
+#### FormStatusValue
+
+<code>'EMPTY' | 'FILLING' | 'COMPLETE'</code>
+
+
+#### BillingDetailsChange
+
+<code>{ readonly country: string | null; readonly state: string | null; readonly postalCode: string | null; }</code>
+
+
+#### CvcStatusChange
+
+<code>{ readonly cvcStatus: { readonly isCvcEmpty: boolean; readonly isCvcComplete: boolean; }; }</code>
 
 
 #### PaymentMethod
@@ -1656,9 +1741,7 @@ From T, pick a set of properties whose keys are in the union K
 
 Construct a type with a set of properties K of type T
 
-<code>{
- [P in K]: T;
- }</code>
+<code>{ [P in K]: T; }</code>
 
 
 #### PropertyKey
@@ -1729,11 +1812,6 @@ Construct a type with a set of properties K of type T
 #### Declaration
 
 <code><a href="#functiondeclaration">FunctionDeclaration</a> | <a href="#variabledeclaration">VariableDeclaration</a> | <a href="#classdeclaration">ClassDeclaration</a></code>
-
-
-#### SubscriptionEvent
-
-<code>'cardDetailsChange' | 'paymentMethodChange' | 'formStatusChange' | 'billingDetailsChange' | 'cvcStatusChange'</code>
 
 
 #### locale

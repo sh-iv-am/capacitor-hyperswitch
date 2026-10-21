@@ -19,9 +19,10 @@ export function createInitPaymentSession(plugin: HyperswitchPlugin): PaymentSess
     ): Promise<PaymentResult> {
       // Sheet events arrive on the "paymentEvent" channel, listened to only while this sheet is up.
       const listener = onChange
-        ? await plugin.addListener('paymentEvent', (eventData: PaymentEventData) =>
-            onChange(toPaymentEvent(eventData)),
-          )
+        ? await plugin.addListener('paymentEvent', (eventData: PaymentEventData) => {
+            const event = toPaymentEvent(eventData);
+            if (event) onChange(event);
+          })
         : null;
       try {
         return await plugin.presentPaymentSheet({ sheetOptions: withSubscriptionEvents(options) });
